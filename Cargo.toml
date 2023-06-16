@@ -1,9 +1,26 @@
 [package]
 name = "aeserialization"
+authors = ["Radosław Rowicki", "Gaith Hallak", "æternity core devs"]
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "aeser"
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
+wasm-bindgen = "0.2.74"
+wee_alloc = { version = "0.4.5", optional = true }
+blake2 = "0.10.6"
+bs58 = "0.5.0"
+base64 = "0.21.2"
 num = "0.4.0"
 num-traits = "0.2"
 num-derive = "0.3"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.13"
+
+[profile.release]
+opt-level = "s"
+>>>>>>> d40a6e6 (init rlp)
