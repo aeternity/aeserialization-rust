@@ -1,7 +1,5 @@
 use num_traits::ToPrimitive;
-use crate::error;
-
-type Bytes = Vec<u8>;
+use crate::{error, Bytes};
 
 // TODO: should I keep this as usize or change to u8 ?
 const UNTAGGED_SIZE_LIMIT: usize = 55;
@@ -30,7 +28,7 @@ pub trait ToRLPItem {
 }
 
 pub trait FromRLPItem: Sized {
-    fn from_rlp_item(item: RLPItem) -> Result<Self, error::DecodingErr>;
+    fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr>;
 }
 
 pub fn encode(item: &RLPItem) -> Bytes {
@@ -85,14 +83,16 @@ fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
         },
         192..=247 => {
             let len: usize = bytes[0] as usize - 192;
-            let mut rest = &bytes[1..];
+            let rest = &bytes[len + 1..];
+            let mut list_rest = &bytes[1..len + 1];
             let mut items = Vec::with_capacity(len);
-            for _ in 0..len {
-                let decoded = try_decode(&rest)?;
+            while !list_rest.is_empty() {
+                let decoded = try_decode(&list_rest)?;
                 let item = decoded.0;
-                rest = decoded.1;
+                list_rest = decoded.1;
                 items.push(item);
             }
+            items.truncate(items.len());
             (RLPItem::List(items), rest)
         },
         248..=255 => {
@@ -102,14 +102,16 @@ fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
             } else {
                 let len: usize = bytes_to_size(bytes[1..len_bytes + 1].to_vec());
 
-                let mut rest = &bytes[1 + len_bytes..];
+                let rest = &bytes[1 + len_bytes + len..];
+                let mut list_rest = &bytes[1 + len_bytes..1 + len_bytes + len];
                 let mut items = Vec::with_capacity(len);
-                for _ in 0..len {
-                    let decoded = try_decode(&rest)?;
+                while !list_rest.is_empty() {
+                    let decoded = try_decode(&list_rest)?;
                     let item = decoded.0;
-                    rest = decoded.1;
+                    list_rest = decoded.1;
                     items.push(item);
                 }
+                items.truncate(items.len());
                 (RLPItem::List(items), rest)
             }
         }
@@ -183,7 +185,7 @@ impl ToRLPItem for Vec<RLPItem> {
 }
 
 impl FromRLPItem for u32 {
-    fn from_rlp_item(item: RLPItem) -> Result<Self, error::DecodingErr> {
+    fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr> {
         match item {
             RLPItem::List(_) => Err(error::DecodingErr::InvalidInt),
             RLPItem::ByteArray(bytes) =>
@@ -201,13 +203,13 @@ impl FromRLPItem for u32 {
 }
 
 impl FromRLPItem for bool {
-    fn from_rlp_item(item: RLPItem) -> Result<Self, error::DecodingErr> {
+    fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr> {
         match item {
             RLPItem::List(_) => Err(error::DecodingErr::InvalidBool),
             RLPItem::ByteArray(bytes) =>
-                if bytes == vec![0u8] {
+                if *bytes == vec![0u8] {
                     Ok(false)
-                } else if bytes == vec![1u8] {
+                } else if *bytes == vec![1u8] {
                     Ok(true)
                 } else {
                     Err(error::DecodingErr::InvalidBool)
@@ -217,20 +219,20 @@ impl FromRLPItem for bool {
 }
 
 impl FromRLPItem for Vec<u8> {
-    fn from_rlp_item(item: RLPItem) -> Result<Self, error::DecodingErr> {
+    fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr> {
         match item {
             RLPItem::List(_) => Err(error::DecodingErr::InvalidBinary),
-            RLPItem::ByteArray(bytes) => Ok(bytes)
+            RLPItem::ByteArray(bytes) => Ok(bytes.to_vec())
         }
     }
 }
 
 // TODO: should this be removed?
 impl FromRLPItem for Vec<RLPItem> {
-    fn from_rlp_item(item: RLPItem) -> Result<Self, error::DecodingErr> {
+    fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr> {
         match item {
             RLPItem::ByteArray(_) => Err(error::DecodingErr::InvalidList),
-            RLPItem::List(items) => Ok(items)
+            RLPItem::List(items) => Ok(items.to_vec())
         }
     }
 }
@@ -241,7 +243,9 @@ mod test {
 
     fn encode_then_decode(input: RLPItem, expect: Bytes) {
         let encoded = encode(&input);
+        println!("{:?}", encoded);
         let decoded = decode(&encoded);
+        println!("{:?}", decoded);
 
         assert_eq!(encoded, expect);
         assert_eq!(decoded, Ok(input));
