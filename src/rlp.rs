@@ -229,7 +229,7 @@ impl FromRLPItem for Vec<u8> {
 impl FromRLPItem for Vec<RLPItem> {
     fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr> {
         match item {
-            RLPItem::ByteArray(_) => Err(error::DecodingErr::InvalidList),
+            RLPItem::ByteArray(_) => Err(error::DecodingErr::InvalidList), // TODO: shouldn't it flatten?
             RLPItem::List(items) => Ok(items.to_vec())
         }
     }
@@ -238,29 +238,83 @@ impl FromRLPItem for Vec<RLPItem> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use proptest::{*, strategy::BoxedStrategy};
+    use proptest::prelude::*;
+
+    impl proptest::arbitrary::Arbitrary for RLPItem {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+        fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+            let leaf = any::<Vec<u8>>().prop_map(RLPItem::ByteArray);
+            leaf.prop_recursive(
+                5, // deep
+                256, // max nodes
+                1000, // max items per collection
+                |inner| prop::collection::vec(inner, 0..10).prop_map(RLPItem::List)
+            ).boxed()
+        }
+    }
 
     fn encode_then_decode(input: RLPItem, expect: Bytes) {
         let encoded = encode(&input);
-        println!("{:?}", encoded);
         let decoded = decode(&encoded);
-        println!("{:?}", decoded);
 
         assert_eq!(encoded, expect);
         assert_eq!(decoded, Ok(input));
     }
 
-    #[test]
-    fn one_byte() {
-        let input = RLPItem::ByteArray(vec![42]);
-        let expect = vec![42];
-        encode_then_decode(input, expect);
-    }
+    proptest! {
 
-    #[test]
-    fn another_one_byte() {
-        let input = RLPItem::ByteArray(vec![127]);
-        let expect = vec![127];
-        encode_then_decode(input, expect);
+        #[test]
+        fn prop_encode_then_decode(input: RLPItem, expect: Bytes) {
+            let encoded = encode(&input);
+            let decoded = decode(&encoded);
+
+            prop_assert_eq!(encoded, expect);
+            prop_assert_eq!(decoded, Ok(input));
+        }
+
+
+        #[test]
+        fn encode_decode(data: Vec<u8>) {
+            let rlp = RLPItem::ByteArray(data);
+            let e = encode(&rlp);
+            let d = decode(&e).expect("decoding failed");
+            prop_assert_eq!(rlp, d);
+        }
+
+        #[test]
+        fn one_byte(b in 0..=UNTAGGED_LIMIT) {
+            let input = RLPItem::ByteArray(vec![b]);
+            let expect = vec![b];
+            encode_then_decode(input, expect);
+        }
+
+
+        #[test]
+        fn one_byte_size_bytes(len in 0..=UNTAGGED_SIZE_LIMIT) {
+            let input_bytes: Bytes = (1..=len as u8).collect();
+            let input = RLPItem::ByteArray(input_bytes.to_vec());
+            let expect= vec![BYTE_ARRAY_OFFSET + len as u8]
+                .into_iter()
+                .chain(input_bytes)
+                .collect();
+            encode_then_decode(input, expect);
+        }
+
+        #[test]
+        fn tagged_size_bytes(len in (UNTAGGED_SIZE_LIMIT + 1)..UNTAGGED_SIZE_LIMIT*2137) {
+            let len_bytes = len.ilog(256) as u8 + 1;
+            let tag = BYTE_ARRAY_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + len_bytes;
+            let input_bytes = vec![42; len];
+            let input = RLPItem::ByteArray(input_bytes.to_vec());
+            let expect = vec![tag]
+                .into_iter()
+                .chain(size_to_min_bytes(len))
+                .chain(input_bytes)
+                .collect();
+            encode_then_decode(input, expect);
+        }
     }
 
     #[test]
@@ -274,47 +328,6 @@ mod test {
     fn two_bytes() {
         let input = RLPItem::ByteArray(vec![128]);
         let expect = vec![BYTE_ARRAY_OFFSET + 1, 128];
-        encode_then_decode(input, expect);
-    }
-
-    #[test]
-    fn one_byte_size_bytes() {
-        let len = 55;
-        let input_bytes: Bytes = (1..=len).collect();
-        let input = RLPItem::ByteArray(input_bytes.to_vec());
-        let expect= vec![BYTE_ARRAY_OFFSET + len]
-            .into_iter()
-            .chain(input_bytes)
-            .collect();
-        encode_then_decode(input, expect);
-    }
-
-    #[test]
-    fn tagged_size_one_byte_bytes() {
-        let len = 56;
-        let tag = BYTE_ARRAY_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + 1;
-        let input_bytes = vec![42; len];
-        let input = RLPItem::ByteArray(input_bytes.to_vec());
-        let expect = vec![tag]
-            .into_iter()
-            .chain(size_to_min_bytes(len))
-            .chain(input_bytes)
-            .collect();
-        encode_then_decode(input, expect);
-    }
-
-    #[test]
-    fn tagged_size_two_bytes_bytes() {
-        let len = 256;
-        let len_bytes = 2;
-        let tag = BYTE_ARRAY_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + len_bytes;
-        let input_bytes = vec![42; len];
-        let input = RLPItem::ByteArray(input_bytes.to_vec());
-        let expect = vec![tag]
-            .into_iter()
-            .chain(size_to_min_bytes(len))
-            .chain(input_bytes)
-            .collect();
         encode_then_decode(input, expect);
     }
 
