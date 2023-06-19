@@ -14,6 +14,7 @@ wee_alloc = { version = "0.4.5", optional = true }
 blake2 = "0.10.6"
 bs58 = "0.5.0"
 base64 = "0.21.2"
+sha256 = "1.1.4"
 num = "0.4.0"
 num-traits = "0.2"
 num-derive = "0.3"

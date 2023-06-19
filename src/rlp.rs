@@ -177,8 +177,7 @@ impl ToRLPItem for Vec<u8> {
     }
 }
 
-// TODO: should this be removed?
-impl ToRLPItem for Vec<RLPItem> {
+impl ToRLPItem for [RLPItem] {
     fn to_rlp_item(&self) -> RLPItem {
         RLPItem::List(self.to_vec())
     }
