@@ -1,5 +1,6 @@
 use crate::id;
 use crate::Bytes;
+use crate::error::DecodingErr;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum KnownType {
@@ -246,27 +247,26 @@ pub fn encode_id(id: id::Id) -> Bytes {
     encode_data(KnownType::from_id_tag(id.tag), id.val.to_vec())
 }
 
-type Error = u32; // TODO normal error
-
-pub fn decode(data: Bytes) -> Result<(KnownType, Bytes), Error> {
+pub fn decode(data: Bytes) -> Result<(KnownType, Bytes), DecodingErr> {
     let (pfx, payload) = split_prefix(&data)?;
-    let tp = KnownType::from_prefix(&pfx).ok_or(2135 as Error)?;
+    let tp = KnownType::from_prefix(&pfx).ok_or(DecodingErr::InvalidPrefix)?;
     let decoded = decode_check(tp, payload)?;
     if tp.check_size(decoded.len()) {
         Ok((tp, decoded))
     } else {
-        Err(2137)
+        Err(DecodingErr::IncorrectSize)
     }
 }
 
-fn split_prefix(data: &[u8]) -> Result<(String, Bytes), Error> {
-    let pfx = String::from_utf8(data[0..2].to_vec()).map_err(|_| 2134 as Error)?;
+fn split_prefix(data: &[u8]) -> Result<(String, Bytes), DecodingErr> {
+    if data.len() < 3 || data[2] != ('_' as u8) { return Err(DecodingErr::MissingPrefix) }
+    let pfx = String::from_utf8(data[0..2].to_vec()).map_err(|_| DecodingErr::InvalidPrefix)?;
     let payload = data[3..].to_vec();
     Ok((pfx, payload))
 }
 
-fn decode_check(tp: KnownType, data: Bytes) -> Result<Bytes, Error> {
-    let dec = tp.encoding().decode(&data).ok_or(2133 as Error)?;
+fn decode_check(tp: KnownType, data: Bytes) -> Result<Bytes, DecodingErr> {
+    let dec = tp.encoding().decode(&data).ok_or(DecodingErr::InvalidEncoding)?;
     let body_size = dec.len() - 4;
     let body = &dec[0..body_size];
     let c = &dec[body_size..body_size + 4];
@@ -274,26 +274,26 @@ fn decode_check(tp: KnownType, data: Bytes) -> Result<Bytes, Error> {
     Ok(body.to_vec())
 }
 
-pub fn decode_id(allowed_types: Vec<KnownType>, data: Bytes) -> Result<id::Id, Error> {
+pub fn decode_id(allowed_types: Vec<KnownType>, data: Bytes) -> Result<id::Id, DecodingErr> {
     let (tp, decoded) = decode(data)?;
 
-    let val: [u8; 32] = decoded.try_into().map_err(|_| 2131 as Error)?;
+    let val: [u8; 32] = decoded.try_into().map_err(|_| DecodingErr::InvalidEncoding)?;
 
     if allowed_types.contains(&tp) {
         match tp.to_id_tag() {
             Some(tag) => Ok(id::Id{tag: tag, val: val}),
-            None => Err(2139)
+            None => Err(DecodingErr::InvalidPrefix)
         }
     } else {
-        Err(2138)
+        Err(DecodingErr::InvalidPrefix)
     }
 }
 
-pub fn decode_blockhash(data: Bytes) -> Result<Bytes, Error> {
+pub fn decode_blockhash(data: Bytes) -> Result<Bytes, DecodingErr> {
     let (tp, decoded) = decode(data)?;
     match tp {
         KnownType::KeyBlockHash => Ok(decoded),
         KnownType::MicroBlockHash => Ok(decoded),
-        _ => Err(2136)
+        _ => Err(DecodingErr::InvalidPrefix)
     }
 }

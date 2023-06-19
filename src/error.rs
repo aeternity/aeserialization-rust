@@ -5,5 +5,9 @@ pub enum DecodingErr {
     InvalidInt,
     InvalidBinary,
     InvalidList,
-    InvalidRLP
+    InvalidRLP,
+    InvalidPrefix,
+    MissingPrefix,
+    IncorrectSize,
+    InvalidEncoding,
 }
