@@ -1,7 +1,9 @@
-pub enum EncodingErr {
-    InvalidId
-}
-
+#[derive(Debug, PartialEq)]
 pub enum DecodingErr {
-    InvalidId
+    InvalidId,
+    InvalidBool,
+    InvalidInt,
+    InvalidBinary,
+    InvalidList,
+    InvalidRLP
 }
