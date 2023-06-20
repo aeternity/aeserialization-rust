@@ -8,7 +8,7 @@ pub const PUB_SIZE: usize = 32;
 pub const TAG_SIZE: usize = 1;
 pub const SERIALIZED_SIZE: usize = TAG_SIZE + PUB_SIZE;
 
-#[derive(Clone, Copy, FromPrimitive, ToPrimitive, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, ToPrimitive, TS)]
 #[ts(export)]
 pub enum Tag {
     Account = 1,
@@ -21,7 +21,7 @@ pub enum Tag {
 
 pub type EncodedId = [u8; SERIALIZED_SIZE];
 
-#[derive(Clone, Copy, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, TS)]
 #[ts(export)]
 pub struct Id {
     pub tag: Tag,
@@ -30,7 +30,7 @@ pub struct Id {
 
 impl ToRLPItem for Id {
     fn to_rlp_item(&self) -> RLPItem {
-        let mut encoded: Bytes = Vec::with_capacity(33);
+        let mut encoded: Bytes = vec![0; 33];
         encoded[0] = self.tag.to_u8().expect("id::Tag enum does not fit in u8");
         encoded[TAG_SIZE..].clone_from_slice(&self.val);
         RLPItem::ByteArray(encoded)
@@ -48,4 +48,46 @@ impl FromRLPItem for Id {
             }
         }
     }
+}
+
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use proptest::prelude::*;
+
+    impl proptest::arbitrary::Arbitrary for Tag {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+        fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+            prop_oneof![
+                Just(Tag::Account),
+                Just(Tag::Name),
+                Just(Tag::Commitment),
+                Just(Tag::Oracle),
+                Just(Tag::Contract),
+                Just(Tag::Channel),
+            ].boxed()
+        }
+    }
+
+    impl proptest::arbitrary::Arbitrary for Id {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+        fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+            (any::<Tag>(), any::<[u8; 32]>()).prop_map(|(tag, val)| Id{tag: tag, val: val})
+                .boxed()
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn id_rlp_roundtrip(id: Id) {
+            let rlp = id.to_rlp_item();
+            let id1: Id = FromRLPItem::from_rlp_item(&rlp).expect("Decoding id from rlp");
+            prop_assert_eq!(id1, id);
+        }
+    }
+
 }

@@ -1,8 +1,8 @@
+use crate::error::DecodingErr;
 use crate::id;
 use crate::Bytes;
-use crate::error::DecodingErr;
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum KnownType {
     KeyBlockHash,
     MicroBlockHash,
@@ -195,7 +195,7 @@ impl KnownType {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum Encoding {
     Base58,
     Base64,
@@ -228,12 +228,12 @@ impl Encoding {
     fn decode(self, data: &[u8]) -> Option<Bytes> {
         match self {
             Encoding::Base58 => bs58::decode(data).into_vec().ok(),
-            Encoding::Base64 => base64::decode(data).ok()
+            Encoding::Base64 => base64::decode(data).ok(),
         }
     }
 }
 
-pub fn encode_data(t: KnownType, payload: Bytes) -> Bytes {
+pub fn encode_data(t: KnownType, payload: &[u8]) -> Bytes {
     let pfx = t.prefix();
     let enc = t.encoding().encode_with_check(&payload);
     pfx.bytes()
@@ -244,10 +244,10 @@ pub fn encode_data(t: KnownType, payload: Bytes) -> Bytes {
 }
 
 pub fn encode_id(id: id::Id) -> Bytes {
-    encode_data(KnownType::from_id_tag(id.tag), id.val.to_vec())
+    encode_data(KnownType::from_id_tag(id.tag), &id.val)
 }
 
-pub fn decode(data: Bytes) -> Result<(KnownType, Bytes), DecodingErr> {
+pub fn decode(data: &[u8]) -> Result<(KnownType, Bytes), DecodingErr> {
     let (pfx, payload) = split_prefix(&data)?;
     let tp = KnownType::from_prefix(&pfx).ok_or(DecodingErr::InvalidPrefix)?;
     let decoded = decode_check(tp, payload)?;
@@ -259,14 +259,19 @@ pub fn decode(data: Bytes) -> Result<(KnownType, Bytes), DecodingErr> {
 }
 
 fn split_prefix(data: &[u8]) -> Result<(String, Bytes), DecodingErr> {
-    if data.len() < 3 || data[2] != ('_' as u8) { return Err(DecodingErr::MissingPrefix) }
+    if data.len() < 3 || data[2] != ('_' as u8) {
+        return Err(DecodingErr::MissingPrefix);
+    }
     let pfx = String::from_utf8(data[0..2].to_vec()).map_err(|_| DecodingErr::InvalidPrefix)?;
     let payload = data[3..].to_vec();
     Ok((pfx, payload))
 }
 
 fn decode_check(tp: KnownType, data: Bytes) -> Result<Bytes, DecodingErr> {
-    let dec = tp.encoding().decode(&data).ok_or(DecodingErr::InvalidEncoding)?;
+    let dec = tp
+        .encoding()
+        .decode(&data)
+        .ok_or(DecodingErr::InvalidEncoding)?;
     let body_size = dec.len() - 4;
     let body = &dec[0..body_size];
     let c = &dec[body_size..body_size + 4];
@@ -274,15 +279,17 @@ fn decode_check(tp: KnownType, data: Bytes) -> Result<Bytes, DecodingErr> {
     Ok(body.to_vec())
 }
 
-pub fn decode_id(allowed_types: Vec<KnownType>, data: Bytes) -> Result<id::Id, DecodingErr> {
-    let (tp, decoded) = decode(data)?;
+pub fn decode_id(allowed_types: &[KnownType], data: Bytes) -> Result<id::Id, DecodingErr> {
+    let (tp, decoded) = decode(&data)?;
 
-    let val: [u8; 32] = decoded.try_into().map_err(|_| DecodingErr::InvalidEncoding)?;
+    let val: [u8; 32] = decoded
+        .try_into()
+        .map_err(|_| DecodingErr::InvalidEncoding)?;
 
     if allowed_types.contains(&tp) {
         match tp.to_id_tag() {
-            Some(tag) => Ok(id::Id{tag: tag, val: val}),
-            None => Err(DecodingErr::InvalidPrefix)
+            Some(tag) => Ok(id::Id { tag: tag, val: val }),
+            None => Err(DecodingErr::InvalidPrefix),
         }
     } else {
         Err(DecodingErr::InvalidPrefix)
@@ -290,10 +297,123 @@ pub fn decode_id(allowed_types: Vec<KnownType>, data: Bytes) -> Result<id::Id, D
 }
 
 pub fn decode_blockhash(data: Bytes) -> Result<Bytes, DecodingErr> {
-    let (tp, decoded) = decode(data)?;
+    let (tp, decoded) = decode(&data)?;
     match tp {
         KnownType::KeyBlockHash => Ok(decoded),
         KnownType::MicroBlockHash => Ok(decoded),
-        _ => Err(DecodingErr::InvalidPrefix)
+        _ => Err(DecodingErr::InvalidPrefix),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use proptest::prelude::*;
+
+    impl proptest::arbitrary::Arbitrary for KnownType {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+        fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+            prop_oneof![
+                Just(KnownType::KeyBlockHash),
+                Just(KnownType::MicroBlockHash),
+                Just(KnownType::BlockPofHash),
+                Just(KnownType::BlockTxHash),
+                Just(KnownType::BlockStateHash),
+                Just(KnownType::Channel),
+                Just(KnownType::ContractBytearray),
+                Just(KnownType::ContractPubkey),
+                Just(KnownType::ContractStoreKey),
+                Just(KnownType::ContractStoreValue),
+                Just(KnownType::Transaction),
+                Just(KnownType::TxHash),
+                Just(KnownType::OraclePubkey),
+                Just(KnownType::OracleQuery),
+                Just(KnownType::OracleQueryId),
+                Just(KnownType::OracleResponse),
+                Just(KnownType::AccountPubkey),
+                Just(KnownType::Signature),
+                Just(KnownType::Name),
+                Just(KnownType::Commitment),
+                Just(KnownType::PeerPubkey),
+                Just(KnownType::State),
+                Just(KnownType::Poi),
+                Just(KnownType::StateTrees),
+                Just(KnownType::CallStateTree),
+                Just(KnownType::Bytearray),
+            ].boxed()
+        }
+    }
+
+    impl proptest::arbitrary::Arbitrary for Encoding {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+        fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+            prop_oneof![
+                Just(Encoding::Base58),
+                Just(Encoding::Base64),
+            ].boxed()
+        }
+    }
+
+    fn valid_data() -> impl Strategy<Value = (KnownType, Bytes)> {
+        any::<KnownType>().prop_flat_map(|tp| {
+            let (min, max) = match tp.byte_size() {
+                Some(s) => (s, s),
+                None => (0, 256)
+            };
+            prop::collection::vec(any::<u8>(), min..=max).prop_map(move |data| (tp, data))
+        })
+    }
+
+    proptest! {
+        #[test]
+        fn prefix_roundtrip(tp: KnownType) {
+            let tp1 = KnownType::from_prefix(&tp.prefix());
+            prop_assert_eq!(Some(tp), tp1);
+        }
+
+        #[test]
+        fn encoding_and_prefix((tp, data) in valid_data()) {
+            let pfx = tp.prefix();
+            let enc = encode_data(tp, &data);
+            prop_assert_eq!(enc[2], '_' as u8);
+            let (pfx1, enc_data) = split_prefix(&enc).expect("Prefix split");
+            prop_assert_eq!(pfx1, pfx);
+            prop_assert_eq!(enc_data.to_vec(), enc[3..].to_vec());
+        }
+
+        #[test]
+        fn encoding_roundtrip((tp, data) in valid_data()) {
+            let enc = encode_data(tp, &data);
+            let (tp1, data1) = decode(&enc).expect("Decoding failed");
+            prop_assert_eq!(tp, tp1);
+            prop_assert_eq!(data, data1);
+        }
+
+        #[test]
+        fn encoding_id_roundtrip(
+            (tag, val, allowed_types)
+                in any::<(id::Tag, [u8; 32], Vec<KnownType>)>()
+                .prop_filter("Tag allowed", |(t, _, kts)| kts.contains(&KnownType::from_id_tag(*t)))
+        ) {
+            let id = id::Id{tag: tag, val: val};
+            let enc = encode_id(id);
+            let dec = decode_id(&allowed_types, enc).expect("Decoding id failed");
+            prop_assert_eq!(id, dec);
+        }
+
+        #[test]
+        fn encoding_id_roundtrip_fail(
+            (tag, val, allowed_types)
+                in any::<(id::Tag, [u8; 32], Vec<KnownType>)>()
+                .prop_filter("Tag not allowed", |(t, _, kts)| !kts.contains(&KnownType::from_id_tag(*t)))
+        ) {
+            let id = id::Id{tag: tag, val: val};
+            let enc = encode_id(id);
+            let dec = decode_id(&allowed_types, enc);
+            prop_assert_eq!(Err(DecodingErr::InvalidPrefix), dec);
+        }
+
     }
 }
