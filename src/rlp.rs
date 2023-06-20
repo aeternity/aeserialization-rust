@@ -243,7 +243,15 @@ impl FromRLPItem for Vec<RLPItem> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use proptest::prelude::*;
+    use proptest::{prelude::*, collection::VecStrategy};
+    use prop::collection::{vec, size_range};
+
+    fn any_u8vec<TMin, TMax>(min_len: TMin, max_len: TMax) -> VecStrategy<proptest::num::u8::Any>
+    where TMin: Into<usize>,
+          TMax: Into<usize>
+    {
+        prop::collection::vec(any::<u8>(), min_len.into()..max_len.into())
+    }
 
     impl proptest::arbitrary::Arbitrary for RLPItem {
         type Parameters = ();
@@ -253,7 +261,7 @@ mod test {
             leaf.prop_recursive(
                 5,     // deep
                 256,   // max nodes
-                10000, // max items per collection
+                1000, // max items per collection
                 |inner| prop::collection::vec(inner, 0..10000).prop_map(RLPItem::List),
             )
             .boxed()
@@ -277,8 +285,7 @@ mod test {
         }
 
         #[test]
-        fn encode_decode(data: Vec<u8>) {
-            let rlp = RLPItem::ByteArray(data);
+        fn encode_decode(rlp: RLPItem) {
             let e = encode(&rlp);
             let d = decode(&e).expect("decoding failed");
             prop_assert_eq!(rlp, d);
@@ -293,10 +300,11 @@ mod test {
 
 
         #[test]
-        fn one_byte_size_bytes(first in (UNTAGGED_LIMIT + 1)..=255, len in 1..=UNTAGGED_SIZE_LIMIT) {
-            let input_bytes: Bytes = std::iter::once(first).chain(1..len as u8).collect();
+        fn one_byte_size_bytes(input_bytes in any_u8vec(1u8, UNTAGGED_SIZE_LIMIT + 1)) {
+            prop_assume!(input_bytes[0] > UNTAGGED_LIMIT);
+
             let input  = RLPItem::ByteArray(input_bytes.to_vec());
-            let expect = vec![BYTE_ARRAY_OFFSET + len as u8]
+            let expect = vec![BYTE_ARRAY_OFFSET + input_bytes.len() as u8]
                 .into_iter()
                 .chain(input_bytes)
                 .collect();
@@ -304,10 +312,10 @@ mod test {
         }
 
         #[test]
-        fn tagged_size_bytes(len in (UNTAGGED_SIZE_LIMIT as usize + 1)..UNTAGGED_SIZE_LIMIT as usize * 256) {
+        fn tagged_size_bytes(input_bytes in any_u8vec(UNTAGGED_SIZE_LIMIT + 1, UNTAGGED_SIZE_LIMIT as usize * 8)) {
+            let len = input_bytes.len();
             let len_bytes = len.ilog(256) as u8 + 1;
             let tag = BYTE_ARRAY_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + len_bytes;
-            let input_bytes = vec![42; len];
             let input = RLPItem::ByteArray(input_bytes.to_vec());
             let expect = vec![tag]
                 .into_iter()
@@ -318,33 +326,37 @@ mod test {
         }
 
         #[test]
-        fn byte_array_list(len in 0..=UNTAGGED_SIZE_LIMIT) {
-            let tag = LIST_OFFSET + len;
-            let input_nums = vec![42; len as usize];
-            let input_bytes: Vec<u8> = input_nums.iter().map(|x| *x as u8).collect();
-            let byte_arrays: Vec<RLPItem> = input_nums.iter().map(|x| x.to_rlp_item()).collect();
-
-            let input = RLPItem::List(byte_arrays);
+        fn one_byte_array_list(
+            input_list
+                in vec(any::<u8>().prop_map(|n| RLPItem::ByteArray(vec![n % (UNTAGGED_SIZE_LIMIT + 1)])),
+                       1..=UNTAGGED_SIZE_LIMIT as usize
+        )) {
+            let payload: Bytes = input_list.iter().flat_map(|x| encode(x)).collect();
+            let tag = LIST_OFFSET + payload.len() as u8;
+            let input = RLPItem::List(input_list);
             let expect= vec![tag]
                 .into_iter()
-                .chain(input_bytes)
+                .chain(payload)
                 .collect();
             encode_then_decode(input, expect);
         }
 
         #[test]
-        fn byte_array_tagged_size_list(len in (LIST_OFFSET as usize + 1..(UNTAGGED_SIZE_LIMIT as usize * 256))) {
+        fn byte_array_tagged_size_list(
+            input_list
+                in vec(any::<u8>().prop_map(|n| RLPItem::ByteArray(vec![n % (UNTAGGED_SIZE_LIMIT + 1)])),
+                       (LIST_OFFSET as usize + 1)..=(UNTAGGED_SIZE_LIMIT as usize * 4))
+        ) {
+            let payload: Bytes = input_list.iter().flat_map(|x| encode(x)).collect();
+            let len = payload.len();
             let len_bytes = len.ilog(256) as u8 + 1;
             let tag = LIST_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + len_bytes;
-            let input_nums = vec![42; len];
-            let input_bytes: Vec<u8> = input_nums.iter().map(|x| *x as u8).collect();
-            let byte_arrays: Vec<RLPItem> = input_nums.iter().map(|x| x.to_rlp_item()).collect();
 
-            let input = RLPItem::List(byte_arrays);
+            let input = RLPItem::List(input_list);
             let expect= vec![tag]
                 .into_iter()
                 .chain(usize_to_min_be_bytes(len))
-                .chain(input_bytes)
+                .chain(payload)
                 .collect();
             encode_then_decode(input, expect);
         }

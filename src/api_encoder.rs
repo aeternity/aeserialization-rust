@@ -392,11 +392,9 @@ mod test {
         }
 
         #[test]
-        fn encoding_id_roundtrip(
-            (tag, val, allowed_types)
-                in any::<(id::Tag, [u8; 32], Vec<KnownType>)>()
-                .prop_filter("Tag allowed", |(t, _, kts)| kts.contains(&KnownType::from_id_tag(*t)))
-        ) {
+        fn encoding_id_roundtrip(tag: id::Tag, val: [u8; 32], allowed_types: Vec<KnownType>) {
+            prop_assume!(allowed_types.contains(&KnownType::from_id_tag(tag)));
+
             let id = id::Id{tag: tag, val: val};
             let enc = encode_id(id);
             let dec = decode_id(&allowed_types, enc).expect("Decoding id failed");
@@ -404,11 +402,9 @@ mod test {
         }
 
         #[test]
-        fn encoding_id_roundtrip_fail(
-            (tag, val, allowed_types)
-                in any::<(id::Tag, [u8; 32], Vec<KnownType>)>()
-                .prop_filter("Tag not allowed", |(t, _, kts)| !kts.contains(&KnownType::from_id_tag(*t)))
-        ) {
+        fn encoding_id_roundtrip_fail(tag: id::Tag, val: [u8; 32], allowed_types: Vec<KnownType>) {
+            prop_assume!(!allowed_types.contains(&KnownType::from_id_tag(tag)));
+
             let id = id::Id{tag: tag, val: val};
             let enc = encode_id(id);
             let dec = decode_id(&allowed_types, enc);
