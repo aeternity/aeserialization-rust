@@ -234,7 +234,7 @@ impl FromRLPItem for Vec<u8> {
 impl FromRLPItem for Vec<RLPItem> {
     fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr> {
         match item {
-            RLPItem::ByteArray(_) => Err(error::DecodingErr::InvalidList), // TODO: shouldn't it flatten?
+            RLPItem::ByteArray(_) => Err(error::DecodingErr::InvalidList),
             RLPItem::List(items) => Ok(items.to_vec()),
         }
     }

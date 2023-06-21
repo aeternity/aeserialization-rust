@@ -2,7 +2,7 @@ use crate::error::DecodingErr;
 use crate::id;
 use crate::Bytes;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum KnownType {
     KeyBlockHash,
     MicroBlockHash,
@@ -366,6 +366,26 @@ mod test {
         })
     }
 
+
+    prop_compose!{
+        fn known_types_with
+            (tp: KnownType, max_elems: usize)
+            (vec_l in prop::collection::vec(any::<KnownType>(), 1..max_elems/2),
+             vec_r in prop::collection::vec(any::<KnownType>(), 1..max_elems/2)
+            )
+             -> Vec<KnownType>
+        {
+            vec![&vec_l[..], &[tp], &vec_r[..]].concat()
+        }
+    }
+
+    fn known_types_without
+            (tp: KnownType, max_elems: usize)
+            -> impl Strategy<Value = Vec<KnownType>>
+    {
+        prop::collection::vec(any::<KnownType>().prop_filter("Unwanted type", move |t| *t != tp), 1..max_elems)
+    }
+
     proptest! {
         #[test]
         fn prefix_roundtrip(tp: KnownType) {
@@ -392,8 +412,11 @@ mod test {
         }
 
         #[test]
-        fn encoding_id_roundtrip(tag: id::Tag, val: [u8; 32], allowed_types: Vec<KnownType>) {
-            prop_assume!(allowed_types.contains(&KnownType::from_id_tag(tag)));
+        fn encoding_id_roundtrip(
+            val: [u8; 32],
+            (tag, allowed_types) in
+                any::<id::Tag>().prop_flat_map(|tag| (Just(tag), known_types_with(KnownType::from_id_tag(tag), 5))))
+            {
 
             let id = id::Id{tag: tag, val: val};
             let enc = encode_id(id);
@@ -402,9 +425,11 @@ mod test {
         }
 
         #[test]
-        fn encoding_id_roundtrip_fail(tag: id::Tag, val: [u8; 32], allowed_types: Vec<KnownType>) {
-            prop_assume!(!allowed_types.contains(&KnownType::from_id_tag(tag)));
-
+        fn encoding_id_roundtrip_fail(
+            val: [u8; 32],
+            (tag, allowed_types) in
+                any::<id::Tag>().prop_flat_map(|tag| (Just(tag), known_types_without(KnownType::from_id_tag(tag), 5))))
+            {
             let id = id::Id{tag: tag, val: val};
             let enc = encode_id(id);
             let dec = decode_id(&allowed_types, enc);
