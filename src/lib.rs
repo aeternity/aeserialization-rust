@@ -19,8 +19,3 @@ pub struct Field {
     name: String,
     val: RLPItem
 }
-
-#[rustler::nif]
-fn encode(data: Vec<u8>) -> Vec<u8> {
-    rlp::encode(&rlp::RLPItem::ByteArray(data.to_vec()))
-}
