@@ -1,16 +1,54 @@
 use crate::{error, Bytes};
 use num_traits::ToPrimitive;
 
-// TODO: should I keep this as usize or change to u8 ?
 const UNTAGGED_SIZE_LIMIT: u8 = 55;
+
 const UNTAGGED_LIMIT: u8 = 127;
 const BYTE_ARRAY_OFFSET: u8 = 128;
 const LIST_OFFSET: u8 = 192;
+
+// Pattern helpers
+const BYTE_ARRAY_UNTAGGED_LIMIT: u8 = BYTE_ARRAY_OFFSET + UNTAGGED_SIZE_LIMIT;
+const BYTE_ARRAY_TAGGED_OFFSET: u8 = BYTE_ARRAY_UNTAGGED_LIMIT + 1;
+const BYTE_ARRAY_LIMIT: u8 = LIST_OFFSET - 1;
+const LIST_UNTAGGED_LIMIT: u8 = LIST_OFFSET + UNTAGGED_SIZE_LIMIT;
+const LIST_TAGGED_OFFSET: u8 = LIST_UNTAGGED_LIMIT + 1;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RLPItem {
     ByteArray(Bytes),
     List(Vec<RLPItem>),
+}
+
+impl RLPItem {
+    pub fn size(&self) -> usize {
+        match self {
+            RLPItem::ByteArray(bytes) => bytes.len(),
+            RLPItem::List(rlps) => rlps.into_iter().map(|rlp| rlp.size()).sum()
+        }
+    }
+
+    pub fn flatten(&self) -> Bytes {
+        let size = self.size();
+        let mut vec = Vec::with_capacity(size);
+
+        fn fill(rlp: &RLPItem, v: &mut Bytes) {
+            match rlp {
+                RLPItem::ByteArray(bytes) => {
+                    v.extend(bytes);
+                },
+                RLPItem::List(rlps) => {
+                    for el in rlps {
+                        fill(el, v);
+                    }
+                }
+            }
+        }
+
+        fill(self, &mut vec);
+
+        vec
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -47,7 +85,7 @@ pub fn encode(item: &RLPItem) -> Bytes {
     }
 }
 
-pub fn decode(bytes: &Bytes) -> Result<RLPItem, DecodingErr> {
+pub fn decode(bytes: &[u8]) -> Result<RLPItem, DecodingErr> {
     // TODO: handle the case of empty bytes
     match try_decode(bytes)? {
         (item, []) => Ok(item),
@@ -61,8 +99,9 @@ pub fn decode(bytes: &Bytes) -> Result<RLPItem, DecodingErr> {
 
 fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
     let res = match bytes[0] {
-        0..=127 => (RLPItem::ByteArray(bytes[0..1].to_vec()), &bytes[1..]),
-        128..=183 => {
+        ..=UNTAGGED_LIMIT =>
+            (RLPItem::ByteArray(bytes[0..1].to_vec()), &bytes[1..]),
+        BYTE_ARRAY_OFFSET..=BYTE_ARRAY_UNTAGGED_LIMIT => {
             let len: usize = bytes[0] as usize - 128;
             // TODO: Make sure that there is enough bytes
             (
@@ -70,7 +109,7 @@ fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
                 &bytes[len + 1..],
             )
         }
-        184..=191 => {
+        BYTE_ARRAY_TAGGED_OFFSET..=BYTE_ARRAY_LIMIT => {
             let len_bytes: usize = bytes[0] as usize - 183;
             // TODO: Make sure len_bytes > 0 && <= 8
             // TODO: Make sure that there is enough bytes
@@ -86,7 +125,7 @@ fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
                 )
             }
         }
-        192..=247 => {
+        LIST_OFFSET..=LIST_UNTAGGED_LIMIT => {
             let len: usize = bytes[0] as usize - 192;
             let rest = &bytes[len + 1..];
             let mut list_rest = &bytes[1..len + 1];
@@ -100,7 +139,7 @@ fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
             items.truncate(items.len());
             (RLPItem::List(items), rest)
         }
-        248..=255 => {
+        LIST_TAGGED_OFFSET.. => {
             let len_bytes: usize = bytes[0] as usize - 247;
             if bytes[1] == 0 {
                 Err(DecodingErr::LeadingZerosInSize)?
@@ -244,13 +283,13 @@ impl FromRLPItem for Vec<RLPItem> {
 mod test {
     use super::*;
     use proptest::{prelude::*, collection::VecStrategy};
-    use prop::collection::{vec, size_range};
+    use prop::collection::vec;
 
     fn any_u8vec<TMin, TMax>(min_len: TMin, max_len: TMax) -> VecStrategy<proptest::num::u8::Any>
     where TMin: Into<usize>,
           TMax: Into<usize>
     {
-        prop::collection::vec(any::<u8>(), min_len.into()..max_len.into())
+        vec(any::<u8>(), min_len.into()..max_len.into())
     }
 
     impl proptest::arbitrary::Arbitrary for RLPItem {
@@ -262,7 +301,7 @@ mod test {
                 5,     // deep
                 256,   // max nodes
                 1000, // max items per collection
-                |inner| prop::collection::vec(inner, 0..10000).prop_map(RLPItem::List),
+                |inner| vec(inner, 0..10000).prop_map(RLPItem::List),
             )
             .boxed()
         }
@@ -360,6 +399,30 @@ mod test {
                 .collect();
             encode_then_decode(input, expect);
         }
+
+        #[test]
+        fn rlp_size(data in vec(any::<u8>(), 0..20)) {
+            let data_size = data.len();
+            let calc_size = RLPItem::ByteArray(data).size();
+
+            prop_assert_eq!(calc_size, data_size);
+        }
+
+        #[test]
+        fn rlp_size_list(data in vec(vec(any::<u8>(), 0..5), 0..5)) {
+            let data_size = data.iter().map(|v| v.len()).sum();
+            let rlps = data.into_iter().map(RLPItem::ByteArray).collect();
+            let calc_size = RLPItem::List(rlps).size();
+
+            prop_assert_eq!(calc_size, data_size);
+        }
+
+        #[test]
+        fn flatten_size(rlp: RLPItem) {
+            let size = rlp.size();
+            let flat = rlp.flatten();
+            prop_assert_eq!(size, flat.len());
+        }
     }
 
     #[test]
@@ -384,7 +447,7 @@ mod test {
         let input_nums = vec![42; len];
         let input_bytes: Vec<u8> = input_nums.iter().map(|x| *x as u8).collect();
 
-        let input = vec![tag + 1]
+        let input: Bytes = vec![tag + 1]
             .into_iter()
             .chain(vec![0])
             .chain(usize_to_min_be_bytes(len))
@@ -399,7 +462,7 @@ mod test {
         let len_bytes = 2;
         let tag = BYTE_ARRAY_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + len_bytes;
         let input_bytes = vec![42; len];
-        let input = vec![tag + 1]
+        let input: Bytes = vec![tag + 1]
             .into_iter()
             .chain(vec![0])
             .chain(usize_to_min_be_bytes(len))
