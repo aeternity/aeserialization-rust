@@ -28,7 +28,7 @@ impl RLPItem {
         }
     }
 
-    pub fn flatten(&self) -> Bytes {
+    pub fn as_bytes(&self) -> Bytes {
         let size = self.size();
         let mut vec = Vec::with_capacity(size);
 
