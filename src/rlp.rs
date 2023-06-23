@@ -28,7 +28,7 @@ impl RLPItem {
         }
     }
 
-    pub fn as_bytes(&self) -> Bytes {
+    pub fn to_bytes(&self) -> Bytes {
         let size = self.size();
         let mut vec = Vec::with_capacity(size);
 
@@ -50,6 +50,7 @@ impl RLPItem {
         vec
     }
 }
+
 
 #[derive(Debug, PartialEq)]
 pub enum DecodingErr {
@@ -97,7 +98,7 @@ pub fn decode(bytes: &[u8]) -> Result<RLPItem, DecodingErr> {
     }
 }
 
-fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
+pub fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
     let res = match bytes[0] {
         ..=UNTAGGED_LIMIT =>
             (RLPItem::ByteArray(bytes[0..1].to_vec()), &bytes[1..]),
@@ -418,9 +419,9 @@ mod test {
         }
 
         #[test]
-        fn flatten_size(rlp: RLPItem) {
+        fn to_bytes_size(rlp: RLPItem) {
             let size = rlp.size();
-            let flat = rlp.flatten();
+            let flat = rlp.to_bytes();
             prop_assert_eq!(size, flat.len());
         }
     }
