@@ -3,6 +3,7 @@ use crate::id;
 use crate::Bytes;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(rustler::NifTaggedEnum)]
 pub enum KnownType {
     KeyBlockHash,
     MicroBlockHash,
@@ -243,7 +244,7 @@ pub fn encode_data(t: KnownType, payload: &[u8]) -> Bytes {
         .collect()
 }
 
-pub fn encode_id(id: id::Id) -> Bytes {
+pub fn encode_id(id: &id::Id) -> Bytes {
     encode_data(KnownType::from_id_tag(id.tag), &id.val.bytes)
 }
 
@@ -418,8 +419,8 @@ mod test {
                 any::<id::Tag>().prop_flat_map(|tag| (Just(tag), known_types_with(KnownType::from_id_tag(tag), 5))))
             {
 
-            let id = id::Id{tag: tag, val: val};
-            let enc = encode_id(id);
+                let id = id::Id{tag: tag, val: id::EncodedId{bytes: val}};
+            let enc = encode_id(&id);
             let dec = decode_id(&allowed_types, enc).expect("Decoding id failed");
             prop_assert_eq!(id, dec);
         }
@@ -430,8 +431,8 @@ mod test {
             (tag, allowed_types) in
                 any::<id::Tag>().prop_flat_map(|tag| (Just(tag), known_types_without(KnownType::from_id_tag(tag), 5))))
             {
-            let id = id::Id{tag: tag, val: val};
-            let enc = encode_id(id);
+                let id = id::Id{tag: tag, val: id::EncodedId{bytes: val}};
+            let enc = encode_id(&id);
             let dec = decode_id(&allowed_types, enc);
             prop_assert_eq!(Err(DecodingErr::InvalidPrefix), dec);
         }

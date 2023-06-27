@@ -1,7 +1,9 @@
 #[derive(Debug, PartialEq)]
 #[derive(rustler::NifUnitEnum)]
 pub enum DecodingErr {
-    InvalidId,
+    InvalidIdSize,
+    InvalidIdTag,
+    InvalidIdPub,
     InvalidBool,
     InvalidInt,
     InvalidBinary,

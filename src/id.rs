@@ -40,12 +40,12 @@ impl Id {
     }
 
     pub fn decode(bytes: &[u8]) -> Result<Id, DecodingErr> {
-        if bytes.len() < SERIALIZED_SIZE {
-            Err(DecodingErr::InvalidId)?;
+        if bytes.len() != SERIALIZED_SIZE {
+            Err(DecodingErr::InvalidIdSize)?;
         }
 
-        let tag: Tag = Tag::from_u8(bytes[0]).ok_or(DecodingErr::InvalidId)?;
-        let val: [u8; 32] = bytes[TAG_SIZE..].try_into().or(Err(DecodingErr::InvalidId))?;
+        let tag: Tag = Tag::from_u8(bytes[0]).ok_or(DecodingErr::InvalidIdTag)?;
+        let val: [u8; 32] = bytes[TAG_SIZE..].try_into().or(Err(DecodingErr::InvalidIdPub))?;
         Ok(Id {tag, val: EncodedId{bytes: val}})
     }
 }
@@ -60,7 +60,7 @@ impl ToRlpItem for Id {
 impl FromRlpItem for Id {
     fn from_rlp_item(item: &RlpItem) -> Result<Self, DecodingErr> {
         match item {
-            RlpItem::List(_) => Err(DecodingErr::InvalidId),
+            RlpItem::List(_) => Err(DecodingErr::InvalidRlp),
             RlpItem::ByteArray(bytes) => {
                 Id::decode(bytes)
             }
@@ -74,14 +74,15 @@ mod erlang {
 
     impl Encoder for EncodedId {
         fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
-            let bin = Binary::from_owned(self.bytes.encode(env).to_binary(), env);
-            bin.encode(env)
+            let mut bin = NewBinary::new(env, self.bytes.len());
+            bin.as_mut_slice().copy_from_slice(&self.bytes);
+            Binary::from(bin).to_term(env)
         }
     }
 
     impl<'a> Decoder<'a> for EncodedId {
         fn decode(term: Term<'a>) -> NifResult<EncodedId> {
-            let bin = term.to_binary();
+            let bin = term.decode_as_binary()?;
             let bytes: &[u8; 32] = bin
                 .as_slice()
                 .try_into()
@@ -95,7 +96,7 @@ mod erlang {
         fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
             (Atom::from_str(env, "id").unwrap(),
              self.tag,
-             Binary::from_owned(self.val.encode(env).to_binary(), env)
+             self.val
             ).encode(env)
         }
     }
@@ -114,7 +115,7 @@ mod erlang {
 
             Ok(Id{
                 tag: tup[1].decode()?,
-                val: <EncodedId as Decoder>::decode(tup[2])?
+                val: Decoder::decode(tup[2])?
             })
         }
     }

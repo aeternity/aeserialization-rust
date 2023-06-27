@@ -4,6 +4,7 @@ use crate::Bytes;
 use crate::Field;
 
 #[derive(Debug, PartialEq)]
+#[derive(rustler::NifMap)]
 struct TypeInfo {
     type_hash: Bytes,
     name: Bytes,
@@ -49,8 +50,9 @@ impl FromRlpItem for TypeInfo {
 }
 
 #[derive(Debug, PartialEq)]
+#[derive(rustler::NifMap)]
 pub struct Code {
-    type_info: TypeInfo,
+    type_info: Vec<TypeInfo>,
     byte_code: Bytes,
     source_hash: Bytes,
     compiler_version: Bytes,
@@ -81,7 +83,7 @@ pub fn serialize(code: &Code) -> Bytes {
         },
         Field {
             name: "type_info".to_string(),
-            val: code.type_info.to_rlp_item()
+            val: RlpItem::List(vec![]) // code.type_info.to_rlp_item()
         },
         Field {
             name: "byte_code".to_string(),
@@ -106,7 +108,7 @@ pub fn deserialize(bytes: &Vec<u8>) -> Result<Code, DecodingErr> {
         Ok(RlpItem::List(items)) =>
             Code {
                 source_hash: Bytes::from_rlp_item(&items[2])?,
-                type_info: TypeInfo::from_rlp_item(&items[3])?,
+                type_info: vec![], //TypeInfo::from_rlp_item(&items[3])?,
                 byte_code: Bytes::from_rlp_item(&items[4])?,
                 compiler_version: Bytes::from_rlp_item(&items[5])?,
                 payable: bool::from_rlp_item(&items[6])?
