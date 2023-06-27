@@ -244,7 +244,7 @@ pub fn encode_data(t: KnownType, payload: &[u8]) -> Bytes {
 }
 
 pub fn encode_id(id: id::Id) -> Bytes {
-    encode_data(KnownType::from_id_tag(id.tag), &id.val)
+    encode_data(KnownType::from_id_tag(id.tag), &id.val.bytes)
 }
 
 pub fn decode(data: &[u8]) -> Result<(KnownType, Bytes), DecodingErr> {
@@ -288,7 +288,7 @@ pub fn decode_id(allowed_types: &[KnownType], data: Bytes) -> Result<id::Id, Dec
 
     if allowed_types.contains(&tp) {
         match tp.to_id_tag() {
-            Some(tag) => Ok(id::Id { tag: tag, val: val }),
+            Some(tag) => Ok(id::Id { tag: tag, val: id::EncodedId{bytes: val} }),
             None => Err(DecodingErr::InvalidPrefix),
         }
     } else {

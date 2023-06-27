@@ -1,4 +1,4 @@
-use rlp::RLPItem;
+use rlp::RlpItem;
 
 pub mod id;
 pub mod contract_code;
@@ -17,5 +17,5 @@ pub type Bytes = Vec<u8>;
 
 pub struct Field {
     name: String,
-    val: RLPItem
+    val: RlpItem
 }

@@ -15,16 +15,16 @@ const LIST_UNTAGGED_LIMIT: u8 = LIST_OFFSET + UNTAGGED_SIZE_LIMIT;
 const LIST_TAGGED_OFFSET: u8 = LIST_UNTAGGED_LIMIT + 1;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum RLPItem {
+pub enum RlpItem {
     ByteArray(Bytes),
-    List(Vec<RLPItem>),
+    List(Vec<RlpItem>),
 }
 
-impl RLPItem {
+impl RlpItem {
     pub fn size(&self) -> usize {
         match self {
-            RLPItem::ByteArray(bytes) => bytes.len(),
-            RLPItem::List(rlps) => rlps.into_iter().map(|rlp| rlp.size()).sum()
+            RlpItem::ByteArray(bytes) => bytes.len(),
+            RlpItem::List(rlps) => rlps.into_iter().map(|rlp| rlp.size()).sum()
         }
     }
 
@@ -32,12 +32,12 @@ impl RLPItem {
         let size = self.size();
         let mut vec = Vec::with_capacity(size);
 
-        fn fill(rlp: &RLPItem, v: &mut Bytes) {
+        fn fill(rlp: &RlpItem, v: &mut Bytes) {
             match rlp {
-                RLPItem::ByteArray(bytes) => {
+                RlpItem::ByteArray(bytes) => {
                     v.extend(bytes);
                 },
-                RLPItem::List(rlps) => {
+                RlpItem::List(rlps) => {
                     for el in rlps {
                         fill(el, v);
                     }
@@ -57,36 +57,36 @@ pub enum DecodingErr {
     Trailing {
         input: Bytes,
         undecoded: Bytes,
-        decoded: RLPItem,
+        decoded: RlpItem,
     },
     LeadingZerosInSize,
 }
 
-pub trait ToRLPItem {
-    fn to_rlp_item(&self) -> RLPItem;
+pub trait ToRlpItem {
+    fn to_rlp_item(&self) -> RlpItem;
 }
 
-pub trait FromRLPItem: Sized {
-    fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr>;
+pub trait FromRlpItem: Sized {
+    fn from_rlp_item(item: &RlpItem) -> Result<Self, error::DecodingErr>;
 }
 
-pub fn encode(item: &RLPItem) -> Bytes {
+pub fn encode(item: &RlpItem) -> Bytes {
     match item {
-        RLPItem::ByteArray(bytes) => {
+        RlpItem::ByteArray(bytes) => {
             if bytes.len() == 1 && bytes[0] <= UNTAGGED_LIMIT {
                 bytes.to_vec()
             } else {
                 add_size(BYTE_ARRAY_OFFSET, bytes.to_vec())
             }
         }
-        RLPItem::List(items) => {
+        RlpItem::List(items) => {
             let bytes: Bytes = items.into_iter().flat_map(encode).collect();
             add_size(LIST_OFFSET, bytes)
         }
     }
 }
 
-pub fn decode(bytes: &[u8]) -> Result<RLPItem, DecodingErr> {
+pub fn decode(bytes: &[u8]) -> Result<RlpItem, DecodingErr> {
     // TODO: handle the case of empty bytes
     match try_decode(bytes)? {
         (item, []) => Ok(item),
@@ -98,15 +98,15 @@ pub fn decode(bytes: &[u8]) -> Result<RLPItem, DecodingErr> {
     }
 }
 
-pub fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
+pub fn try_decode(bytes: &[u8]) -> Result<(RlpItem, &[u8]), DecodingErr> {
     let res = match bytes[0] {
         ..=UNTAGGED_LIMIT =>
-            (RLPItem::ByteArray(bytes[0..1].to_vec()), &bytes[1..]),
+            (RlpItem::ByteArray(bytes[0..1].to_vec()), &bytes[1..]),
         BYTE_ARRAY_OFFSET..=BYTE_ARRAY_UNTAGGED_LIMIT => {
             let len: usize = bytes[0] as usize - 128;
             // TODO: Make sure that there is enough bytes
             (
-                RLPItem::ByteArray(bytes[1..len + 1].to_vec()),
+                RlpItem::ByteArray(bytes[1..len + 1].to_vec()),
                 &bytes[len + 1..],
             )
         }
@@ -121,7 +121,7 @@ pub fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
             } else {
                 let len: usize = bytes_to_size(bytes[1..len_bytes + 1].to_vec());
                 (
-                    RLPItem::ByteArray(bytes[len_bytes + 1..len_bytes + len + 1].to_vec()),
+                    RlpItem::ByteArray(bytes[len_bytes + 1..len_bytes + len + 1].to_vec()),
                     &bytes[len_bytes + len + 1..],
                 )
             }
@@ -138,7 +138,7 @@ pub fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
                 items.push(item);
             }
             items.truncate(items.len());
-            (RLPItem::List(items), rest)
+            (RlpItem::List(items), rest)
         }
         LIST_TAGGED_OFFSET.. => {
             let len_bytes: usize = bytes[0] as usize - 247;
@@ -157,7 +157,7 @@ pub fn try_decode(bytes: &[u8]) -> Result<(RLPItem, &[u8]), DecodingErr> {
                     items.push(item);
                 }
                 items.truncate(items.len());
-                (RLPItem::List(items), rest)
+                (RlpItem::List(items), rest)
             }
         }
     };
@@ -201,35 +201,35 @@ fn usize_to_min_be_bytes(n: usize) -> Bytes {
     bytes[bytes.len() - byte_len..].to_vec()
 }
 
-impl ToRLPItem for u32 {
-    fn to_rlp_item(&self) -> RLPItem {
-        RLPItem::ByteArray(usize_to_min_be_bytes(*self as usize))
+impl ToRlpItem for u32 {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::ByteArray(usize_to_min_be_bytes(*self as usize))
     }
 }
 
-impl ToRLPItem for bool {
-    fn to_rlp_item(&self) -> RLPItem {
-        RLPItem::ByteArray(vec![*self as u8])
+impl ToRlpItem for bool {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::ByteArray(vec![*self as u8])
     }
 }
 
-impl ToRLPItem for Vec<u8> {
-    fn to_rlp_item(&self) -> RLPItem {
-        RLPItem::ByteArray(self.to_vec())
+impl ToRlpItem for Vec<u8> {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::ByteArray(self.to_vec())
     }
 }
 
-impl ToRLPItem for [RLPItem] {
-    fn to_rlp_item(&self) -> RLPItem {
-        RLPItem::List(self.to_vec())
+impl ToRlpItem for [RlpItem] {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::List(self.to_vec())
     }
 }
 
-impl FromRLPItem for u32 {
-    fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr> {
+impl FromRlpItem for u32 {
+    fn from_rlp_item(item: &RlpItem) -> Result<Self, error::DecodingErr> {
         match item {
-            RLPItem::List(_) => Err(error::DecodingErr::InvalidInt),
-            RLPItem::ByteArray(bytes) => {
+            RlpItem::List(_) => Err(error::DecodingErr::InvalidInt),
+            RlpItem::ByteArray(bytes) => {
                 if bytes.len() > 0 && bytes.len() <= 4 && bytes[0] != 0 {
                     let mut bytes_vec = vec![0; 4 - bytes.len()];
                     bytes_vec.extend(bytes);
@@ -245,11 +245,11 @@ impl FromRLPItem for u32 {
     }
 }
 
-impl FromRLPItem for bool {
-    fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr> {
+impl FromRlpItem for bool {
+    fn from_rlp_item(item: &RlpItem) -> Result<Self, error::DecodingErr> {
         match item {
-            RLPItem::List(_) => Err(error::DecodingErr::InvalidBool),
-            RLPItem::ByteArray(bytes) => {
+            RlpItem::List(_) => Err(error::DecodingErr::InvalidBool),
+            RlpItem::ByteArray(bytes) => {
                 if *bytes == vec![0u8] {
                     Ok(false)
                 } else if *bytes == vec![1u8] {
@@ -262,20 +262,79 @@ impl FromRLPItem for bool {
     }
 }
 
-impl FromRLPItem for Vec<u8> {
-    fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr> {
+impl FromRlpItem for Vec<u8> {
+    fn from_rlp_item(item: &RlpItem) -> Result<Self, error::DecodingErr> {
         match item {
-            RLPItem::List(_) => Err(error::DecodingErr::InvalidBinary),
-            RLPItem::ByteArray(bytes) => Ok(bytes.to_vec()),
+            RlpItem::List(_) => Err(error::DecodingErr::InvalidBinary),
+            RlpItem::ByteArray(bytes) => Ok(bytes.to_vec()),
         }
     }
 }
 
-impl FromRLPItem for Vec<RLPItem> {
-    fn from_rlp_item(item: &RLPItem) -> Result<Self, error::DecodingErr> {
+impl FromRlpItem for Vec<RlpItem> {
+    fn from_rlp_item(item: &RlpItem) -> Result<Self, error::DecodingErr> {
         match item {
-            RLPItem::ByteArray(_) => Err(error::DecodingErr::InvalidList),
-            RLPItem::List(items) => Ok(items.to_vec()),
+            RlpItem::ByteArray(_) => Err(error::DecodingErr::InvalidList),
+            RlpItem::List(items) => Ok(items.to_vec()),
+        }
+    }
+}
+
+mod erlang {
+    use rustler::*;
+    use crate::rlp::*;
+
+    fn make_bin<'a>(env: Env<'a>, data: &[u8]) -> Term<'a> {
+        let mut bin = NewBinary::new(env, data.len());
+        bin.as_mut_slice().copy_from_slice(data);
+        Term::from(bin)
+    }
+
+    impl Encoder for RlpItem {
+        fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+            match self {
+                RlpItem::ByteArray(bytes) =>
+                    make_bin(env, bytes),
+                RlpItem::List(rlps) => {
+                    rlps.iter()
+                        .rfold(Term::list_new_empty(env),
+                              |acc, el| acc.list_prepend(el.encode(env)))
+                }
+            }
+        }
+    }
+
+    impl<'a> Decoder<'a>  for RlpItem {
+        fn decode(term: Term) -> NifResult<RlpItem> {
+            if term.is_binary() {
+                Ok(RlpItem::ByteArray(
+                    term.decode_as_binary()?.as_slice().to_vec(),
+                ))
+            } else if term.is_list() {
+                let list: Vec<Term> = term.decode()?;
+                let rlps: NifResult<Vec<RlpItem>> = list.iter().map(|x| x.decode()).collect();
+                Ok(RlpItem::List(rlps?))
+            } else {
+                Err(Error::BadArg)
+            }
+        }
+    }
+
+    impl Encoder for DecodingErr {
+        fn encode<'a>(self: &DecodingErr, env: Env<'a>) -> Term<'a>  {
+            match self {
+                DecodingErr::Trailing {
+                    input,
+                    undecoded,
+                    decoded
+                } => {
+                    let header = Atom::from_str(env, "trailing").unwrap().to_term(env);
+                    (header, input, undecoded, decoded).encode(env)
+                },
+                DecodingErr::LeadingZerosInSize => {
+                    Atom::from_str(env, "trailing").unwrap().to_term(env)
+                }
+            }
         }
     }
 }
@@ -293,22 +352,22 @@ mod test {
         vec(any::<u8>(), min_len.into()..max_len.into())
     }
 
-    impl proptest::arbitrary::Arbitrary for RLPItem {
+    impl proptest::arbitrary::Arbitrary for RlpItem {
         type Parameters = ();
         type Strategy = BoxedStrategy<Self>;
         fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
-            let leaf = any::<Vec<u8>>().prop_map(RLPItem::ByteArray);
+            let leaf = any::<Vec<u8>>().prop_map(RlpItem::ByteArray);
             leaf.prop_recursive(
                 5,     // deep
                 256,   // max nodes
                 1000, // max items per collection
-                |inner| vec(inner, 0..10000).prop_map(RLPItem::List),
+                |inner| vec(inner, 0..10000).prop_map(RlpItem::List),
             )
             .boxed()
         }
     }
 
-    fn encode_then_decode(input: RLPItem, expect: Bytes) {
+    fn encode_then_decode(input: RlpItem, expect: Bytes) {
         let encoded = encode(&input);
         let decoded = decode(&encoded);
 
@@ -325,7 +384,7 @@ mod test {
         }
 
         #[test]
-        fn encode_decode(rlp: RLPItem) {
+        fn encode_decode(rlp: RlpItem) {
             let e = encode(&rlp);
             let d = decode(&e).expect("decoding failed");
             prop_assert_eq!(rlp, d);
@@ -333,7 +392,7 @@ mod test {
 
         #[test]
         fn one_byte(b in 0..=UNTAGGED_LIMIT) {
-            let input = RLPItem::ByteArray(vec![b]);
+            let input = RlpItem::ByteArray(vec![b]);
             let expect = vec![b];
             encode_then_decode(input, expect);
         }
@@ -343,7 +402,7 @@ mod test {
         fn one_byte_size_bytes(input_bytes in any_u8vec(1u8, UNTAGGED_SIZE_LIMIT + 1)) {
             prop_assume!(input_bytes[0] > UNTAGGED_LIMIT);
 
-            let input  = RLPItem::ByteArray(input_bytes.to_vec());
+            let input  = RlpItem::ByteArray(input_bytes.to_vec());
             let expect = vec![BYTE_ARRAY_OFFSET + input_bytes.len() as u8]
                 .into_iter()
                 .chain(input_bytes)
@@ -356,7 +415,7 @@ mod test {
             let len = input_bytes.len();
             let len_bytes = len.ilog(256) as u8 + 1;
             let tag = BYTE_ARRAY_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + len_bytes;
-            let input = RLPItem::ByteArray(input_bytes.to_vec());
+            let input = RlpItem::ByteArray(input_bytes.to_vec());
             let expect = vec![tag]
                 .into_iter()
                 .chain(usize_to_min_be_bytes(len))
@@ -368,12 +427,12 @@ mod test {
         #[test]
         fn one_byte_array_list(
             input_list
-                in vec(any::<u8>().prop_map(|n| RLPItem::ByteArray(vec![n % (UNTAGGED_SIZE_LIMIT + 1)])),
+                in vec(any::<u8>().prop_map(|n| RlpItem::ByteArray(vec![n % (UNTAGGED_SIZE_LIMIT + 1)])),
                        1..=UNTAGGED_SIZE_LIMIT as usize
         )) {
             let payload: Bytes = input_list.iter().flat_map(|x| encode(x)).collect();
             let tag = LIST_OFFSET + payload.len() as u8;
-            let input = RLPItem::List(input_list);
+            let input = RlpItem::List(input_list);
             let expect= vec![tag]
                 .into_iter()
                 .chain(payload)
@@ -384,7 +443,7 @@ mod test {
         #[test]
         fn byte_array_tagged_size_list(
             input_list
-                in vec(any::<u8>().prop_map(|n| RLPItem::ByteArray(vec![n % (UNTAGGED_SIZE_LIMIT + 1)])),
+                in vec(any::<u8>().prop_map(|n| RlpItem::ByteArray(vec![n % (UNTAGGED_SIZE_LIMIT + 1)])),
                        (LIST_OFFSET as usize + 1)..=(UNTAGGED_SIZE_LIMIT as usize * 4))
         ) {
             let payload: Bytes = input_list.iter().flat_map(|x| encode(x)).collect();
@@ -392,7 +451,7 @@ mod test {
             let len_bytes = len.ilog(256) as u8 + 1;
             let tag = LIST_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + len_bytes;
 
-            let input = RLPItem::List(input_list);
+            let input = RlpItem::List(input_list);
             let expect= vec![tag]
                 .into_iter()
                 .chain(usize_to_min_be_bytes(len))
@@ -404,7 +463,7 @@ mod test {
         #[test]
         fn rlp_size(data in vec(any::<u8>(), 0..20)) {
             let data_size = data.len();
-            let calc_size = RLPItem::ByteArray(data).size();
+            let calc_size = RlpItem::ByteArray(data).size();
 
             prop_assert_eq!(calc_size, data_size);
         }
@@ -412,14 +471,14 @@ mod test {
         #[test]
         fn rlp_size_list(data in vec(vec(any::<u8>(), 0..5), 0..5)) {
             let data_size = data.iter().map(|v| v.len()).sum();
-            let rlps = data.into_iter().map(RLPItem::ByteArray).collect();
-            let calc_size = RLPItem::List(rlps).size();
+            let rlps = data.into_iter().map(RlpItem::ByteArray).collect();
+            let calc_size = RlpItem::List(rlps).size();
 
             prop_assert_eq!(calc_size, data_size);
         }
 
         #[test]
-        fn to_bytes_size(rlp: RLPItem) {
+        fn to_bytes_size(rlp: RlpItem) {
             let size = rlp.size();
             let flat = rlp.to_bytes();
             prop_assert_eq!(size, flat.len());
@@ -428,14 +487,14 @@ mod test {
 
     #[test]
     fn zero_bytes() {
-        let input = RLPItem::ByteArray(vec![]);
+        let input = RlpItem::ByteArray(vec![]);
         let expect = vec![BYTE_ARRAY_OFFSET];
         encode_then_decode(input, expect);
     }
 
     #[test]
     fn zero_bytes_list() {
-        let input = RLPItem::List(vec![]);
+        let input = RlpItem::List(vec![]);
         let expect = vec![LIST_OFFSET];
         encode_then_decode(input, expect);
     }

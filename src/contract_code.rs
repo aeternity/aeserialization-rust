@@ -1,4 +1,4 @@
-use crate::rlp::{self, ToRLPItem, RLPItem, FromRLPItem};
+use crate::rlp::{self, ToRlpItem, RlpItem, FromRlpItem};
 use crate::error::DecodingErr;
 use crate::Bytes;
 use crate::Field;
@@ -12,9 +12,9 @@ struct TypeInfo {
     out_type: Bytes
 }
 
-impl ToRLPItem for TypeInfo {
-    fn to_rlp_item(&self) -> RLPItem {
-        RLPItem::List(vec![RLPItem::List(vec![
+impl ToRlpItem for TypeInfo {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::List(vec![RlpItem::List(vec![
             self.type_hash.to_rlp_item(),
             self.name.to_rlp_item(),
             self.payable.to_rlp_item(),
@@ -24,12 +24,12 @@ impl ToRLPItem for TypeInfo {
     }
 }
 
-impl FromRLPItem for TypeInfo {
-    fn from_rlp_item(item: &RLPItem) -> Result<Self, DecodingErr> {
+impl FromRlpItem for TypeInfo {
+    fn from_rlp_item(item: &RlpItem) -> Result<Self, DecodingErr> {
         match item {
-            RLPItem::List(list) =>
+            RlpItem::List(list) =>
                 match list.first() {
-                    Some(RLPItem::List(items)) =>
+                    Some(RlpItem::List(items)) =>
                         if items.len() == 5 {
                             Ok(TypeInfo {
                                 type_hash: Bytes::from_rlp_item(&items[0])?,
@@ -97,13 +97,13 @@ pub fn serialize(code: &Code) -> Bytes {
         }
     ];
 
-    let items: Vec<RLPItem> = fields.into_iter().map(|f| f.val).collect();
+    let items: Vec<RlpItem> = fields.into_iter().map(|f| f.val).collect();
     rlp::encode(&items.to_rlp_item())
 }
 
 pub fn deserialize(bytes: &Vec<u8>) -> Result<Code, DecodingErr> {
     let deser = match rlp::decode(&bytes) {
-        Ok(RLPItem::List(items)) =>
+        Ok(RlpItem::List(items)) =>
             Code {
                 source_hash: Bytes::from_rlp_item(&items[2])?,
                 type_info: TypeInfo::from_rlp_item(&items[3])?,
@@ -111,7 +111,7 @@ pub fn deserialize(bytes: &Vec<u8>) -> Result<Code, DecodingErr> {
                 compiler_version: Bytes::from_rlp_item(&items[5])?,
                 payable: bool::from_rlp_item(&items[6])?
             },
-        _ => Err(DecodingErr::InvalidRLP)?
+        _ => Err(DecodingErr::InvalidRlp)?
     };
     Ok(deser)
 }
