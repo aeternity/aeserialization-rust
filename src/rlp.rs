@@ -2,7 +2,6 @@ use crate::{error, Bytes};
 use num_traits::ToPrimitive;
 
 const UNTAGGED_SIZE_LIMIT: u8 = 55;
-
 const UNTAGGED_LIMIT: u8 = 127;
 const BYTE_ARRAY_OFFSET: u8 = 128;
 const LIST_OFFSET: u8 = 192;
@@ -20,38 +19,6 @@ pub enum RlpItem {
     List(Vec<RlpItem>),
 }
 
-impl RlpItem {
-    pub fn size(&self) -> usize {
-        match self {
-            RlpItem::ByteArray(bytes) => bytes.len(),
-            RlpItem::List(rlps) => rlps.into_iter().map(|rlp| rlp.size()).sum()
-        }
-    }
-
-    pub fn to_bytes(&self) -> Bytes {
-        let size = self.size();
-        let mut vec = Vec::with_capacity(size);
-
-        fn fill(rlp: &RlpItem, v: &mut Bytes) {
-            match rlp {
-                RlpItem::ByteArray(bytes) => {
-                    v.extend(bytes);
-                },
-                RlpItem::List(rlps) => {
-                    for el in rlps {
-                        fill(el, v);
-                    }
-                }
-            }
-        }
-
-        fill(self, &mut vec);
-
-        vec
-    }
-}
-
-
 #[derive(Debug, PartialEq)]
 pub enum DecodingErr {
     Trailing {
@@ -59,7 +26,15 @@ pub enum DecodingErr {
         undecoded: Bytes,
         decoded: RlpItem,
     },
-    LeadingZerosInSize,
+    LeadingZerosInSize {
+        position: usize
+    },
+    SizeOverflow {
+        position: usize,
+        expected: usize,
+        actual: usize,
+    },
+    Empty
 }
 
 pub trait ToRlpItem {
@@ -87,7 +62,8 @@ pub fn encode(item: &RlpItem) -> Bytes {
 }
 
 pub fn decode(bytes: &[u8]) -> Result<RlpItem, DecodingErr> {
-    // TODO: handle the case of empty bytes
+    if bytes.len() == 0 { return Err(DecodingErr::Empty) }
+
     match try_decode(bytes)? {
         (item, []) => Ok(item),
         (item, rest) => Err(DecodingErr::Trailing {
@@ -99,70 +75,85 @@ pub fn decode(bytes: &[u8]) -> Result<RlpItem, DecodingErr> {
 }
 
 pub fn try_decode(bytes: &[u8]) -> Result<(RlpItem, &[u8]), DecodingErr> {
+    try_decode_at(bytes, 0)
+}
+
+fn try_decode_at(bytes: &[u8], at: usize) -> Result<(RlpItem, &[u8]), DecodingErr> {
     let res = match bytes[0] {
         ..=UNTAGGED_LIMIT =>
-            (RlpItem::ByteArray(bytes[0..1].to_vec()), &bytes[1..]),
+            ( RlpItem::ByteArray(bytes[0..1].to_vec()),
+              &bytes[1..]
+            ),
         BYTE_ARRAY_OFFSET..=BYTE_ARRAY_UNTAGGED_LIMIT => {
-            let len: usize = bytes[0] as usize - 128;
-            // TODO: Make sure that there is enough bytes
+            let len: usize = (bytes[0] - BYTE_ARRAY_OFFSET) as usize;
+
+            if bytes.len() < len + 1 {
+                Err(DecodingErr::SizeOverflow {
+                    position: at,
+                    expected: len,
+                    actual: bytes.len()
+                })?
+            }
+
             (
                 RlpItem::ByteArray(bytes[1..len + 1].to_vec()),
-                &bytes[len + 1..],
+                &bytes[len + 1..]
             )
         }
         BYTE_ARRAY_TAGGED_OFFSET..=BYTE_ARRAY_LIMIT => {
-            let len_bytes: usize = bytes[0] as usize - 183;
-            // TODO: Make sure len_bytes > 0 && <= 8
-            // TODO: Make sure that there is enough bytes
-            // TOOD: Remove the unwrap and try_into
-            // TODO: Make sure len does not start with 0 byte
-            if bytes[1] == 0 {
-                Err(DecodingErr::LeadingZerosInSize)?
-            } else {
-                let len: usize = bytes_to_size(bytes[1..len_bytes + 1].to_vec());
-                (
-                    RlpItem::ByteArray(bytes[len_bytes + 1..len_bytes + len + 1].to_vec()),
-                    &bytes[len_bytes + len + 1..],
-                )
+            let len_bytes: usize = (bytes[0] - BYTE_ARRAY_UNTAGGED_LIMIT) as usize;
+
+            if bytes.len() < len_bytes + 1 {
+                Err(DecodingErr::SizeOverflow {
+                    position: at,
+                    expected: len_bytes,
+                    actual: bytes.len()
+                })?
             }
+
+            if bytes[1] == 0 {
+                Err(DecodingErr::LeadingZerosInSize {position: at + 1})?
+            }
+
+            let len: usize = bytes_to_size(bytes[1..len_bytes + 1].to_vec());
+            (
+                RlpItem::ByteArray(bytes[len_bytes + 1..len_bytes + len + 1].to_vec()),
+                &bytes[len_bytes + len + 1..]
+            )
         }
         LIST_OFFSET..=LIST_UNTAGGED_LIMIT => {
-            let len: usize = bytes[0] as usize - 192;
+            let len: usize = (bytes[0] - LIST_OFFSET) as usize;
             let rest = &bytes[len + 1..];
-            let mut list_rest = &bytes[1..len + 1];
-            let mut items = Vec::with_capacity(len);
-            while !list_rest.is_empty() {
-                let decoded = try_decode(&list_rest)?;
-                let item = decoded.0;
-                list_rest = decoded.1;
-                items.push(item);
-            }
-            items.truncate(items.len());
+            let items = decode_list_at(list_bytes, at + 1)?;
             (RlpItem::List(items), rest)
         }
         LIST_TAGGED_OFFSET.. => {
-            let len_bytes: usize = bytes[0] as usize - 247;
+            let len_bytes: usize = (bytes[0] - LIST_UNTAGGED_LIMIT) as usize;
             if bytes[1] == 0 {
-                Err(DecodingErr::LeadingZerosInSize)?
-            } else {
-                let len: usize = bytes_to_size(bytes[1..len_bytes + 1].to_vec());
-
-                let rest = &bytes[1 + len_bytes + len..];
-                let mut list_rest = &bytes[1 + len_bytes..1 + len_bytes + len];
-                let mut items = Vec::with_capacity(len);
-                while !list_rest.is_empty() {
-                    let decoded = try_decode(&list_rest)?;
-                    let item = decoded.0;
-                    list_rest = decoded.1;
-                    items.push(item);
-                }
-                items.truncate(items.len());
-                (RlpItem::List(items), rest)
+                Err(DecodingErr::LeadingZerosInSize {position: at + 1})?
             }
+
+            let len: usize = bytes_to_size(bytes[1..len_bytes + 1].to_vec());
+            let rest = &bytes[1 + len_bytes + len..];
+            let list_bytes = &bytes[1 + len_bytes..1 + len_bytes + len];
+
+            let items = decode_list_at(list_bytes, at + 1)?;
+            (RlpItem::List(items), rest)
         }
     };
 
     Ok(res)
+}
+
+fn decode_list_at(mut bytes: &[u8], mut at: usize) -> Result<Vec<RlpItem>, DecodingErr> {
+    let mut items = Vec::new();
+    while !bytes.is_empty() {
+        let (item, rest) = try_decode_at(bytes, at)?;
+        items.push(item);
+        at += (bytes.len() + 1) - rest.len();
+        bytes = rest;
+    }
+    Ok(items)
 }
 
 fn add_size(offset: u8, bytes: Bytes) -> Bytes {
@@ -460,29 +451,6 @@ mod test {
             encode_then_decode(input, expect);
         }
 
-        #[test]
-        fn rlp_size(data in vec(any::<u8>(), 0..20)) {
-            let data_size = data.len();
-            let calc_size = RlpItem::ByteArray(data).size();
-
-            prop_assert_eq!(calc_size, data_size);
-        }
-
-        #[test]
-        fn rlp_size_list(data in vec(vec(any::<u8>(), 0..5), 0..5)) {
-            let data_size = data.iter().map(|v| v.len()).sum();
-            let rlps = data.into_iter().map(RlpItem::ByteArray).collect();
-            let calc_size = RlpItem::List(rlps).size();
-
-            prop_assert_eq!(calc_size, data_size);
-        }
-
-        #[test]
-        fn to_bytes_size(rlp: RlpItem) {
-            let size = rlp.size();
-            let flat = rlp.to_bytes();
-            prop_assert_eq!(size, flat.len());
-        }
     }
 
     #[test]
@@ -503,7 +471,7 @@ mod test {
     fn gal_size_encoding_list() {
         let len = 56;
         let len_bytes = 1;
-        let tag = LIST_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + len_bytes;
+        let tag = LIST_UNTAGGED_LIMIT as u8 + len_bytes;
         let input_nums = vec![42; len];
         let input_bytes: Vec<u8> = input_nums.iter().map(|x| *x as u8).collect();
 
@@ -513,14 +481,14 @@ mod test {
             .chain(usize_to_min_be_bytes(len))
             .chain(input_bytes)
             .collect();
-        assert_eq!(decode(&input), Err(DecodingErr::LeadingZerosInSize));
+        assert_eq!(decode(&input), Err(DecodingErr::LeadingZerosInSize{position: 1}));
     }
 
     #[test]
     fn gal_size_encoding_byte_array() {
         let len = 256;
         let len_bytes = 2;
-        let tag = BYTE_ARRAY_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + len_bytes;
+        let tag = BYTE_ARRAY_UNTAGGED_LIMIT as u8 + len_bytes;
         let input_bytes = vec![42; len];
         let input: Bytes = vec![tag + 1]
             .into_iter()
@@ -528,6 +496,6 @@ mod test {
             .chain(usize_to_min_be_bytes(len))
             .chain(input_bytes)
             .collect();
-        assert_eq!(decode(&input), Err(DecodingErr::LeadingZerosInSize));
+        assert_eq!(decode(&input), Err(DecodingErr::LeadingZerosInSize{position: 1}));
     }
 }
