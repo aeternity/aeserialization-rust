@@ -124,6 +124,7 @@ fn try_decode_at(bytes: &[u8], at: usize) -> Result<(RlpItem, &[u8]), DecodingEr
         LIST_OFFSET..=LIST_UNTAGGED_LIMIT => {
             let len: usize = (bytes[0] - LIST_OFFSET) as usize;
             let rest = &bytes[len + 1..];
+            let list_bytes = &bytes[1..len + 1];
             let items = decode_list_at(list_bytes, at + 1)?;
             (RlpItem::List(items), rest)
         }
@@ -319,12 +320,23 @@ mod erlang {
                     undecoded,
                     decoded
                 } => {
-                    let header = Atom::from_str(env, "trailing").unwrap().to_term(env);
+                    let header = Atom::from_str(env, "trailing").unwrap();
                     (header, input, undecoded, decoded).encode(env)
                 },
-                DecodingErr::LeadingZerosInSize => {
-                    Atom::from_str(env, "trailing").unwrap().to_term(env)
+                DecodingErr::LeadingZerosInSize {
+                    position
+                } => {
+                    let header = Atom::from_str(env, "leading_zeros_in_size").unwrap();
+                    (header, position).encode(env)
+                },
+                DecodingErr::SizeOverflow { position, expected, actual } => {
+                    let header = Atom::from_str(env, "size_overflow").unwrap();
+                    (header, position, expected, actual).encode(env)
+                },
+                DecodingErr::Empty => {
+                    Atom::from_str(env, "empty").unwrap().encode(env)
                 }
+
             }
         }
     }

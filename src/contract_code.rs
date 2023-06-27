@@ -4,7 +4,7 @@ use crate::Bytes;
 use crate::Field;
 
 #[derive(Debug, PartialEq)]
-#[derive(rustler::NifMap)]
+// #[derive(rustler::NifMap)]
 struct TypeInfo {
     type_hash: Bytes,
     name: Bytes,
@@ -50,7 +50,7 @@ impl FromRlpItem for TypeInfo {
 }
 
 #[derive(Debug, PartialEq)]
-#[derive(rustler::NifMap)]
+// #[derive(rustler::NifMap)]
 pub struct Code {
     type_info: Vec<TypeInfo>,
     byte_code: Bytes,
@@ -116,6 +116,94 @@ pub fn deserialize(bytes: &Vec<u8>) -> Result<Code, DecodingErr> {
         _ => Err(DecodingErr::InvalidRlp)?
     };
     Ok(deser)
+}
+
+mod erlang {
+    use rustler::*;
+
+    mod fields {
+        rustler::atoms! {
+            type_hash,
+            name,
+            payable,
+            arg_type,
+            out_type,
+            type_info,
+            byte_code,
+            source_hash,
+            compiler_version,
+        }
+    }
+
+    fn make_bin<'a>(env: Env<'a>, data: &crate::Bytes) -> Term<'a> {
+        let mut bin = NewBinary::new(env, data.len());
+        bin.as_mut_slice().copy_from_slice(&data);
+        Binary::from(bin).to_term(env)
+    }
+
+    fn open_bin<'a>(term: Term<'a>) -> NifResult<crate::Bytes> {
+         if !term.is_binary() {
+            Err(Error::BadArg)?;
+        }
+
+        let bin = Binary::from_term(term)?;
+        let data = bin.as_slice();
+        Ok(data.to_vec())
+    }
+
+    impl Encoder for crate::contract_code::TypeInfo {
+        fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+            Term::map_from_pairs(
+                env,
+                &[(fields::type_hash(), make_bin(env, &self.type_hash)),
+                  (fields::name(), make_bin(env, &self.name)),
+                  (fields::payable(), self.payable.encode(env)),
+                  (fields::arg_type(), make_bin(env, &self.arg_type)),
+                  (fields::out_type(), make_bin(env, &self.out_type)),
+                ]
+            ).expect("Failed creating an Erlang map")
+        }
+    }
+
+    impl<'a> Decoder<'a> for crate::contract_code::TypeInfo {
+        fn decode(term: Term<'a>) -> NifResult<Self> {
+            let type_info = crate::contract_code::TypeInfo{
+                type_hash: open_bin(term.map_get(fields::type_hash())?)?,
+                name: open_bin(term.map_get(fields::name())?)?,
+                payable: term.map_get(fields::payable())?.decode()?,
+                arg_type: open_bin(term.map_get(fields::arg_type())?)?,
+                out_type: open_bin(term.map_get(fields::out_type())?)?
+            };
+            Ok(type_info)
+        }
+    }
+
+    impl Encoder for crate::contract_code::Code {
+        fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
+            Term::map_from_pairs(
+                env,
+                &[(fields::type_info(), self.type_info.encode(env)),
+                  (fields::byte_code(), make_bin(env, &self.byte_code)),
+                  (fields::payable(), self.payable.encode(env)),
+                  (fields::source_hash(), make_bin(env, &self.source_hash)),
+                  (fields::compiler_version(), make_bin(env, &self.compiler_version)),
+                ]
+            ).expect("Failed creating an Erlang map")
+        }
+    }
+
+    impl<'a> Decoder<'a> for crate::contract_code::Code {
+        fn decode(term: Term<'a>) -> NifResult<Self> {
+            let code = crate::contract_code::Code{
+                type_info: term.map_get(fields::type_info())?.decode()?,
+                byte_code: open_bin(term.map_get(fields::byte_code())?)?,
+                payable: term.map_get(fields::payable())?.decode()?,
+                source_hash: open_bin(term.map_get(fields::source_hash())?)?,
+                compiler_version: open_bin(term.map_get(fields::compiler_version())?)?
+            };
+            Ok(code)
+        }
+    }
 }
 
 #[cfg(test)]
