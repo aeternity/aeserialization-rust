@@ -226,7 +226,11 @@ impl Encoding {
     fn encode(self, data: &[u8]) -> Bytes {
         match self {
             Encoding::Base58 => bs58::encode(data).into_vec(),
-            Encoding::Base64 => base64::encode(data).as_bytes().to_vec(),
+            Encoding::Base64 => {
+                use base64::engine::general_purpose::STANDARD;
+                use base64::Engine;
+                STANDARD.encode(data).as_bytes().to_vec()
+            }
         }
     }
 
@@ -238,7 +242,11 @@ impl Encoding {
     fn decode(self, data: &[u8]) -> Option<Bytes> {
         match self {
             Encoding::Base58 => bs58::decode(data).into_vec().ok(),
-            Encoding::Base64 => base64::decode(data).ok(),
+            Encoding::Base64 => {
+                use base64::Engine;
+                use base64::engine::general_purpose::STANDARD;
+                STANDARD.decode(data).ok()
+            }
         }
     }
 }

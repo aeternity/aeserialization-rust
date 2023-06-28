@@ -1,7 +1,6 @@
 use crate::error::DecodingErr;
 use crate::rlp::{self, FromRlpItem, RlpItem, ToRlpItem};
 use crate::Bytes;
-use crate::Field;
 
 /// FATE contract code with metadata
 #[derive(Debug, PartialEq)]
