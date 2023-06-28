@@ -2,6 +2,7 @@ use crate::error::DecodingErr;
 use crate::id;
 use crate::Bytes;
 
+/// Possible chain-object types.
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[derive(rustler::NifTaggedEnum)]
 pub enum KnownType {
@@ -34,6 +35,7 @@ pub enum KnownType {
 }
 
 impl KnownType {
+    /// Payload size for a given type. Returns [None] is the size is not fixed.
     pub fn byte_size(self) -> Option<usize> {
         match self {
             KnownType::KeyBlockHash => Some(32),
@@ -65,6 +67,8 @@ impl KnownType {
         }
     }
 
+    /// Validates payload size. Returns [true] when the size for the type matches or the type does
+    /// not constrain the size. Returns [false] otherwise.
     pub fn check_size(self, s: usize) -> bool {
         match self.byte_size() {
             Some(n) => n == s,
@@ -72,7 +76,9 @@ impl KnownType {
         }
     }
 
-    fn prefix(self) -> String {
+    /// Returns a prefix describing the type. This prefix is prepended to the encoded payload and
+    /// separated with a single '_' character.
+    pub fn prefix(self) -> String {
         let s = match self {
             KnownType::KeyBlockHash => "kh",
             KnownType::MicroBlockHash => "mh",
@@ -104,7 +110,8 @@ impl KnownType {
         String::from(s)
     }
 
-    fn from_prefix(prefix: &str) -> Option<KnownType> {
+    /// Parses the type from a prefix. See [to_prefix] for more details.
+    pub fn from_prefix(prefix: &str) -> Option<KnownType> {
         use KnownType::*;
         match prefix {
             "kh" => Some(KeyBlockHash),
@@ -163,7 +170,8 @@ impl KnownType {
         }
     }
 
-    fn encoding(self) -> Encoding {
+    /// Describes how payload is encoded.
+    pub fn encoding(self) -> Encoding {
         use Encoding::*;
         match self {
             KnownType::KeyBlockHash => Base58,
@@ -196,8 +204,9 @@ impl KnownType {
     }
 }
 
+/// Supported types of encoding.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum Encoding {
+pub enum Encoding {
     Base58,
     Base64,
 }
@@ -234,6 +243,7 @@ impl Encoding {
     }
 }
 
+/// Encodes raw data accordingly to the type. Includes a checksum.
 pub fn encode_data(t: KnownType, payload: &[u8]) -> Bytes {
     let pfx = t.prefix();
     let enc = t.encoding().encode_with_check(&payload);
@@ -244,27 +254,32 @@ pub fn encode_data(t: KnownType, payload: &[u8]) -> Bytes {
         .collect()
 }
 
+/// Encodes an id. Includes a checksum.
 pub fn encode_id(id: &id::Id) -> Bytes {
     encode_data(KnownType::from_id_tag(id.tag), &id.val.bytes)
 }
 
+/// Decodes raw data according to the prefixed type.
 pub fn decode(data: &[u8]) -> Result<(KnownType, Bytes), DecodingErr> {
     let (pfx, payload) = split_prefix(&data)?;
     let tp = KnownType::from_prefix(&pfx).ok_or(DecodingErr::InvalidPrefix)?;
     let decoded = decode_check(tp, payload)?;
-    if tp.check_size(decoded.len()) {
-        Ok((tp, decoded))
-    } else {
-        Err(DecodingErr::IncorrectSize)
+
+    if !tp.check_size(decoded.len()) {
+        Err(DecodingErr::IncorrectSize)?;
     }
+
+    Ok((tp, decoded))
 }
 
 fn split_prefix(data: &[u8]) -> Result<(String, Bytes), DecodingErr> {
     if data.len() < 3 || data[2] != ('_' as u8) {
-        return Err(DecodingErr::MissingPrefix);
+        Err(DecodingErr::MissingPrefix)?;
     }
+
     let pfx = String::from_utf8(data[0..2].to_vec()).map_err(|_| DecodingErr::InvalidPrefix)?;
     let payload = data[3..].to_vec();
+
     Ok((pfx, payload))
 }
 
@@ -277,9 +292,11 @@ fn decode_check(tp: KnownType, data: Bytes) -> Result<Bytes, DecodingErr> {
     let body = &dec[0..body_size];
     let c = &dec[body_size..body_size + 4];
     assert_eq!(c, tp.encoding().make_check(body));
+
     Ok(body.to_vec())
 }
 
+/// Decodes data as an id.
 pub fn decode_id(allowed_types: &[KnownType], data: Bytes) -> Result<id::Id, DecodingErr> {
     let (tp, decoded) = decode(&data)?;
 
@@ -287,16 +304,18 @@ pub fn decode_id(allowed_types: &[KnownType], data: Bytes) -> Result<id::Id, Dec
         .try_into()
         .map_err(|_| DecodingErr::InvalidEncoding)?;
 
-    if allowed_types.contains(&tp) {
-        match tp.to_id_tag() {
-            Some(tag) => Ok(id::Id { tag: tag, val: id::EncodedId{bytes: val} }),
-            None => Err(DecodingErr::InvalidPrefix),
-        }
-    } else {
-        Err(DecodingErr::InvalidPrefix)
+    if !allowed_types.contains(&tp) {
+        Err(DecodingErr::InvalidPrefix)?;
     }
+
+    let id = id::Id {
+        tag: tp.to_id_tag().ok_or(DecodingErr::InvalidPrefix)?,
+        val: id::EncodedId{bytes: val}
+    };
+    Ok(id)
 }
 
+/// Decodes a block hash. Requires an adequate prefix.
 pub fn decode_blockhash(data: Bytes) -> Result<Bytes, DecodingErr> {
     let (tp, decoded) = decode(&data)?;
     match tp {

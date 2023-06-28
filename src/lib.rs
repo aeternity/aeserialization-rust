@@ -16,8 +16,3 @@ use wasm_bindgen::prelude::*;
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 pub type Bytes = Vec<u8>;
-
-pub struct Field {
-    name: String,
-    val: RlpItem
-}

@@ -4,10 +4,14 @@ use num::{FromPrimitive, ToPrimitive};
 use num_derive::{FromPrimitive, ToPrimitive};
 use ts_rs::TS;
 
+/// Size of the id payload (eg, a public key).
 pub const PUB_SIZE: usize = 32;
+/// Size of the id type tag.
 pub const TAG_SIZE: usize = 1;
+/// Total byte size of a serialized id.
 pub const SERIALIZED_SIZE: usize = TAG_SIZE + PUB_SIZE;
 
+/// Denotes the type of an id.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, ToPrimitive, TS)]
 #[ts(export)]
 #[derive(rustler::NifTaggedEnum)]
@@ -20,10 +24,11 @@ pub enum Tag {
     Channel = 6
 }
 
-
+/// Wrapper for an id payload.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, TS)]
-pub struct EncodedId { pub bytes: [u8; PUB_SIZE] }
+pub struct EncodedId { pub bytes: [u8; PUB_SIZE] } // TODO: hermetize
 
+/// Identifier of a chain object.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, TS)]
 #[ts(export)]
 pub struct Id {
@@ -32,14 +37,16 @@ pub struct Id {
 }
 
 impl Id {
-    pub fn encode(&self) -> Bytes {
+    /// Serializes an id into a byte array.
+    pub fn serialize(&self) -> Bytes {
         let mut encoded: Bytes = vec![0; 33];
         encoded[0] = self.tag.to_u8().expect("id::Tag enum does not fit in u8");
         encoded[TAG_SIZE..].clone_from_slice(&self.val.bytes);
         encoded
     }
 
-    pub fn decode(bytes: &[u8]) -> Result<Id, DecodingErr> {
+    /// Deserializes an id from a byte array.
+    pub fn deserialize(bytes: &[u8]) -> Result<Id, DecodingErr> {
         if bytes.len() != SERIALIZED_SIZE {
             Err(DecodingErr::InvalidIdSize)?;
         }
@@ -52,7 +59,7 @@ impl Id {
 
 impl ToRlpItem for Id {
     fn to_rlp_item(&self) -> RlpItem {
-        let encoded = self.encode();
+        let encoded = self.serialize();
         RlpItem::ByteArray(encoded)
     }
 }
@@ -62,7 +69,7 @@ impl FromRlpItem for Id {
         match item {
             RlpItem::List(_) => Err(DecodingErr::InvalidRlp),
             RlpItem::ByteArray(bytes) => {
-                Id::decode(bytes)
+                Id::deserialize(bytes)
             }
         }
     }
