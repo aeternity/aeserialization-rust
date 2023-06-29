@@ -61,7 +61,7 @@ impl RlpItem {
                 }
             }
             RlpItem::List(items) => {
-                let bytes: Bytes = items.into_iter().flat_map(|x| x.serialize()).collect();
+                let bytes: Bytes = items.iter().flat_map(|x| x.serialize()).collect();
                 Self::add_size(LIST_OFFSET, bytes)
             }
         }
@@ -69,7 +69,7 @@ impl RlpItem {
 
     /// Deserializes an [RlpItem]. Requires consuming the entire input.
     pub fn deserialize(bytes: &[u8]) -> Result<RlpItem, DecodingErr> {
-        if bytes.len() == 0 {
+        if bytes.is_empty() {
             Err(DecodingErr::Empty)?;
         }
 
@@ -243,7 +243,7 @@ pub trait FromRlpItem: Sized {
     fn from_rlp_item(item: &RlpItem) -> Result<Self, error::DecodingErr>;
 
     fn deserialize_rlp(data: &[u8]) -> Result<Self, error::DecodingErr> {
-        let rlp = RlpItem::deserialize(&data)
+        let rlp = RlpItem::deserialize(data)
             .map_err(|_| error::DecodingErr::InvalidRlp)?;
         FromRlpItem::from_rlp_item(&rlp)
     }
@@ -308,7 +308,7 @@ impl FromRlpItem for u32 {
         let bytes = item.byte_array()?;
         let size = std::mem::size_of::<Self>();
 
-        if bytes.len() == 0 || bytes.len() > size || (bytes.len() > 1 && bytes[0] == 0) {
+        if bytes.is_empty() || bytes.len() > size || (bytes.len() > 1 && bytes[0] == 0) {
             Err(error::DecodingErr::InvalidInt)?;
         }
 
@@ -341,9 +341,7 @@ impl<T: FromRlpItem> FromRlpItem for Vec<T> {
     fn from_rlp_item(item: &RlpItem) -> Result<Self, error::DecodingErr> {
         let rlps = item.list()?;
 
-        let list: Result<Vec<T>, _> = rlps.into_iter().map(|x| T::from_rlp_item(&x)).collect();
-
-        Ok(list?)
+        rlps.into_iter().map(|x| T::from_rlp_item(&x)).collect()
     }
 }
 
@@ -489,7 +487,7 @@ mod test {
         fn tagged_size_bytes(input_bytes in any_u8vec(UNTAGGED_SIZE_LIMIT + 1, UNTAGGED_SIZE_LIMIT as usize * 8)) {
             let len = input_bytes.len();
             let len_bytes = len.ilog(256) as u8 + 1;
-            let tag = BYTE_ARRAY_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + len_bytes;
+            let tag = BYTE_ARRAY_OFFSET + UNTAGGED_SIZE_LIMIT + len_bytes;
             let input = RlpItem::ByteArray(input_bytes.to_vec());
             let expect = vec![tag]
                 .into_iter()
@@ -524,7 +522,7 @@ mod test {
             let payload: Bytes = input_list.iter().flat_map(|x| x.serialize()).collect();
             let len = payload.len();
             let len_bytes = len.ilog(256) as u8 + 1;
-            let tag = LIST_OFFSET + UNTAGGED_SIZE_LIMIT as u8 + len_bytes;
+            let tag = LIST_OFFSET + UNTAGGED_SIZE_LIMIT + len_bytes;
 
             let input = RlpItem::List(input_list);
             let expect= vec![tag]
@@ -555,7 +553,7 @@ mod test {
     fn gal_size_encoding_list() {
         let len = 56;
         let len_bytes = 1;
-        let tag = LIST_UNTAGGED_LIMIT as u8 + len_bytes;
+        let tag = LIST_UNTAGGED_LIMIT + len_bytes;
         let input_nums = vec![42; len];
         let input_bytes: Vec<u8> = input_nums.iter().map(|x| *x as u8).collect();
 
@@ -575,7 +573,7 @@ mod test {
     fn gal_size_encoding_byte_array() {
         let len = 256;
         let len_bytes = 2;
-        let tag = BYTE_ARRAY_UNTAGGED_LIMIT as u8 + len_bytes;
+        let tag = BYTE_ARRAY_UNTAGGED_LIMIT + len_bytes;
         let input_bytes = vec![42; len];
         let input: Bytes = vec![tag + 1]
             .into_iter()

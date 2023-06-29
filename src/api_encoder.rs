@@ -254,9 +254,8 @@ impl Encoding {
 /// Encodes raw data accordingly to the type. Includes a checksum.
 pub fn encode_data(t: KnownType, payload: &[u8]) -> Bytes {
     let pfx = t.prefix();
-    let enc = t.encoding().encode_with_check(&payload);
+    let enc = t.encoding().encode_with_check(payload);
     pfx.bytes()
-        .into_iter()
         .chain("_".bytes())
         .chain(enc)
         .collect()
@@ -269,7 +268,7 @@ pub fn encode_id(id: &id::Id) -> Bytes {
 
 /// Decodes raw data according to the prefixed type.
 pub fn decode(data: &[u8]) -> Result<(KnownType, Bytes), DecodingErr> {
-    let (pfx, payload) = split_prefix(&data)?;
+    let (pfx, payload) = split_prefix(data)?;
     let tp = KnownType::from_prefix(&pfx).ok_or(DecodingErr::InvalidPrefix)?;
     let decoded = decode_check(tp, payload)?;
 
@@ -281,7 +280,7 @@ pub fn decode(data: &[u8]) -> Result<(KnownType, Bytes), DecodingErr> {
 }
 
 fn split_prefix(data: &[u8]) -> Result<(String, Bytes), DecodingErr> {
-    if data.len() < 3 || data[2] != ('_' as u8) {
+    if data.len() < 3 || data[2] != (b'_') {
         Err(DecodingErr::MissingPrefix)?;
     }
 
@@ -425,7 +424,7 @@ mod test {
         fn encoding_and_prefix((tp, data) in valid_data()) {
             let pfx = tp.prefix();
             let enc = encode_data(tp, &data);
-            prop_assert_eq!(enc[2], '_' as u8);
+            prop_assert_eq!(enc[2], b'_');
             let (pfx1, enc_data) = split_prefix(&enc).expect("Prefix split");
             prop_assert_eq!(pfx1, pfx);
             prop_assert_eq!(enc_data.to_vec(), enc[3..].to_vec());
@@ -442,11 +441,11 @@ mod test {
         #[test]
         fn encoding_id_roundtrip(
             val: [u8; 32],
-            (tag, allowed_types) in
+            (t, allowed_types) in
                 any::<id::Tag>().prop_flat_map(|tag| (Just(tag), known_types_with(KnownType::from_id_tag(tag), 5))))
             {
 
-                let id = id::Id{tag: tag, val: id::EncodedId{bytes: val}};
+                let id = id::Id{tag: t, val: id::EncodedId{bytes: val}};
             let enc = encode_id(&id);
             let dec = decode_id(&allowed_types, enc).expect("Decoding id failed");
             prop_assert_eq!(id, dec);
@@ -455,10 +454,10 @@ mod test {
         #[test]
         fn encoding_id_roundtrip_fail(
             val: [u8; 32],
-            (tag, allowed_types) in
+            (t, allowed_types) in
                 any::<id::Tag>().prop_flat_map(|tag| (Just(tag), known_types_without(KnownType::from_id_tag(tag), 5))))
             {
-                let id = id::Id{tag: tag, val: id::EncodedId{bytes: val}};
+                let id = id::Id{tag: t, val: id::EncodedId{bytes: val}};
             let enc = encode_id(&id);
             let dec = decode_id(&allowed_types, enc);
             prop_assert_eq!(Err(DecodingErr::InvalidPrefix), dec);

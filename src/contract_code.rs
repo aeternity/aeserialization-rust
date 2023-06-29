@@ -26,7 +26,7 @@ impl Code {
     }
 
     /// Deserializes a byte-encoded RLP object into FATE code.
-    pub fn deserialize(bytes: &Vec<u8>) -> Result<Code, DecodingErr> {
+    pub fn deserialize(bytes: &[u8]) -> Result<Code, DecodingErr> {
         rlp::FromRlpItem::deserialize_rlp(bytes)
     }
 }
@@ -57,7 +57,7 @@ impl FromRlpItem for Code {
     fn from_rlp_item(item: &RlpItem) -> Result<Self, crate::error::DecodingErr> {
         let items = item.list().map_err(|_| DecodingErr::InvalidRlp)?;
 
-        if items[3].list()?.len() > 0 {
+        if !items[3].list()?.is_empty() {
             // This field is a residue after AEVM. In FATE it has to be an empty list.
             Err(DecodingErr::InvalidCode)?;
         }
@@ -104,11 +104,11 @@ mod erlang {
 
     fn make_bin<'a>(env: Env<'a>, data: &crate::Bytes) -> Term<'a> {
         let mut bin = NewBinary::new(env, data.len());
-        bin.as_mut_slice().copy_from_slice(&data);
+        bin.as_mut_slice().copy_from_slice(data);
         Binary::from(bin).to_term(env)
     }
 
-    fn open_bin<'a>(term: Term<'a>) -> NifResult<crate::Bytes> {
+    fn open_bin(term: Term) -> NifResult<crate::Bytes> {
         if !term.is_binary() {
             Err(Error::BadArg)?;
         }
@@ -167,7 +167,7 @@ mod test {
             9, 117, 91, 60, 167, 64, 44, 67, 82, 145, 174, 238, 243,
         ];
 
-        assert_eq!(hash_source_code(&source), expect);
+        assert_eq!(hash_source_code(source), expect);
     }
 
     #[test]
