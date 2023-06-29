@@ -21,9 +21,6 @@ num-traits = "0.2"
 num-derive = "0.3"
 ts-rs = "6.2"
 rustler = "0.28.0"
-rustler_codegen = "0.28.0"
-syn = "2.0.22"
-quote = "1.0.28"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.13"
