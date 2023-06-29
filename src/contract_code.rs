@@ -1,6 +1,13 @@
 use crate::error::DecodingErr;
-use crate::rlp::{self, FromRlpItem, RlpItem, ToRlpItem};
+use crate::rlp::{FromRlpItem, RlpItem, ToRlpItem};
 use crate::Bytes;
+
+// TODO: this should come from another module which has not been rewritten yet
+/// Identifier tag of serialized contract code
+const CODE_TAG: u8 = 70;
+
+/// Contract format version.
+const VSN: u8 = 3;
 
 /// FATE contract code with metadata
 #[derive(Debug, PartialEq)]
@@ -27,34 +34,34 @@ impl Code {
 
     /// Deserializes a byte-encoded RLP object into FATE code.
     pub fn deserialize(bytes: &[u8]) -> Result<Code, DecodingErr> {
-        rlp::FromRlpItem::deserialize_rlp(bytes)
+        FromRlpItem::deserialize_rlp(bytes)
     }
 }
 
-impl rlp::ToRlpItem for Code {
+impl ToRlpItem for Code {
     fn to_rlp_item(&self) -> RlpItem {
         let fields = vec![
             // Tag
             CODE_TAG.to_rlp_item(), // TODO: should not be hardcoded
-            // Compiler version
+            // Contract version
             VSN.to_rlp_item(), // TODO: should this be hardcoded?
             // Source hash
-            rlp::RlpItem::ByteArray(self.source_hash.to_vec()),
+            RlpItem::ByteArray(self.source_hash.to_vec()),
             // Type info (AEVM residue, has to be empty)
-            rlp::RlpItem::List(vec![]),
+            RlpItem::List(vec![]),
             // Byte code
-            rlp::RlpItem::ByteArray(self.byte_code.to_vec()),
+            RlpItem::ByteArray(self.byte_code.to_vec()),
             // Contract version
-            rlp::RlpItem::ByteArray(self.compiler_version.to_vec()),
+            RlpItem::ByteArray(self.compiler_version.to_vec()),
             // Payable
             self.payable.to_rlp_item(),
         ];
-        rlp::RlpItem::List(fields)
+        RlpItem::List(fields)
     }
 }
 
 impl FromRlpItem for Code {
-    fn from_rlp_item(item: &RlpItem) -> Result<Self, crate::error::DecodingErr> {
+    fn from_rlp_item(item: &RlpItem) -> Result<Self, DecodingErr> {
         let items = item.list().map_err(|_| DecodingErr::InvalidRlp)?;
 
         if !items[3].list()?.is_empty() {
@@ -82,11 +89,9 @@ pub fn hash_source_code(str: &str) -> Bytes {
     hasher.finalize().to_vec()
 }
 
-const CODE_TAG: u8 = 70;
-const VSN: u8 = 3;
-
 mod erlang {
     use rustler::*;
+    use super::*;
 
     mod fields {
         rustler::atoms! {
@@ -118,7 +123,7 @@ mod erlang {
         Ok(data.to_vec())
     }
 
-    impl Encoder for crate::contract_code::Code {
+    impl Encoder for Code {
         fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
             Term::map_from_pairs(
                 env,
@@ -137,13 +142,13 @@ mod erlang {
         }
     }
 
-    impl<'a> Decoder<'a> for crate::contract_code::Code {
+    impl<'a> Decoder<'a> for Code {
         fn decode(term: Term<'a>) -> NifResult<Self> {
             if !term.map_get(fields::type_info())?.is_empty_list() {
                 Err(Error::BadArg)?;
             }
 
-            let code = crate::contract_code::Code {
+            let code = Code {
                 byte_code: open_bin(term.map_get(fields::byte_code())?)?,
                 payable: term.map_get(fields::payable())?.decode()?,
                 source_hash: open_bin(term.map_get(fields::source_hash())?)?,
@@ -184,12 +189,6 @@ mod test {
             240,9,117,91,60,167,64,44,67,82,145,174,238,243,192,138,68,85,77,77,89,95,67,
             79,68,69,133,51,46,49,46,52,1
         ];
-
-        // TODO: figure out which is correct
-        // let expect = vec![
-        //     248,60,70,3,160,48,58,125,237,188,44,120,213,52,155,92,4,213,8,157,
-        //     236,198,161,240,9,117,91,60,167,64,44,67,82,145,174,238,243,198,197,
-        //     128,128,0,128,128,138,68,85,77,77,89,32,67,79,68,69,133,51,46,49,46,52,1];
 
         let serialized = input.serialize();
         let deserialized = Code::deserialize(&serialized);
