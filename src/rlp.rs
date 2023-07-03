@@ -24,9 +24,9 @@ const LIST_UNTAGGED_LIMIT: u8 = LIST_OFFSET + UNTAGGED_SIZE_LIMIT;
 /// Max byte list indicator with a multi-byte size description.
 const LIST_TAGGED_OFFSET: u8 = LIST_UNTAGGED_LIMIT + 1;
 
-/// A
-/// [Recursive-length-prefix](https://github.com/aeternity/protocol/blob/master/serializations.md#rlp-encoding)
-/// encoded value.
+/// A recursive-length-prefix--enocded value. See the
+/// [protocol](https://github.com/aeternity/protocol/blob/master/serializations.md#rlp-encoding) for
+/// detailed description.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RlpItem {
     ByteArray(Bytes),
@@ -184,7 +184,6 @@ impl RlpItem {
         }
     }
 }
-
 
 fn bytes_to_size(mut bytes: Bytes) -> usize {
     let total = std::mem::size_of::<usize>();
@@ -346,7 +345,7 @@ impl<T: FromRlpItem> FromRlpItem for Vec<T> {
 }
 
 mod erlang {
-    use crate::rlp::*;
+    use super::*;
     use rustler::*;
 
     fn make_bin<'a>(env: Env<'a>, data: &[u8]) -> Term<'a> {
