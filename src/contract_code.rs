@@ -65,7 +65,9 @@ impl FromRlpItem for Code {
         let items = item.list().map_err(|_| DecodingErr::InvalidRlp)?;
 
         if !items[3].list()?.is_empty() {
-            // This field is a residue after AEVM. In FATE it has to be an empty list.
+            // This field is a residue after AEVM. In FATE it has to be an empty list.  TODO: while
+            // extending to full node functionality, accept a non-empty list. Rewrite tests to
+            // consider this quirk.
             Err(DecodingErr::InvalidCode)?;
         }
 
