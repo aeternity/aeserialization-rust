@@ -11,8 +11,9 @@ Cargo.lock
 *.pdb
 
 /target
-Cargo.lock
 settings.json
 
 # Outputs from proptest 
 proptest-regressions/
+
+.idea/

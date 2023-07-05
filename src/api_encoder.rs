@@ -252,22 +252,23 @@ impl Encoding {
 }
 
 /// Encodes raw data accordingly to the type. Includes a checksum.
-pub fn encode_data(t: KnownType, payload: &[u8]) -> Bytes {
+pub fn encode_data(t: KnownType, payload: &[u8]) -> String {
     let pfx = t.prefix();
     let enc = t.encoding().encode_with_check(payload);
-    pfx.bytes()
-        .chain("_".bytes())
+    let bytes = pfx.bytes()
+        .chain([b'_'])
         .chain(enc)
-        .collect()
+        .collect();
+    String::from_utf8(bytes).unwrap()
 }
 
 /// Encodes an id. Includes a checksum.
-pub fn encode_id(id: &id::Id) -> Bytes {
+pub fn encode_id(id: &id::Id) -> String {
     encode_data(KnownType::from_id_tag(id.tag), &id.val.bytes)
 }
 
 /// Decodes raw data according to the prefixed type.
-pub fn decode(data: &[u8]) -> Result<(KnownType, Bytes), DecodingErr> {
+pub fn decode(data: &str) -> Result<(KnownType, Bytes), DecodingErr> {
     let (pfx, payload) = split_prefix(data)?;
     let tp = KnownType::from_prefix(&pfx).ok_or(DecodingErr::InvalidPrefix)?;
     let decoded = decode_check(tp, payload)?;
@@ -279,13 +280,14 @@ pub fn decode(data: &[u8]) -> Result<(KnownType, Bytes), DecodingErr> {
     Ok((tp, decoded))
 }
 
-fn split_prefix(data: &[u8]) -> Result<(String, Bytes), DecodingErr> {
-    if data.len() < 3 || data[2] != (b'_') {
+fn split_prefix(data: &str) -> Result<(String, Bytes), DecodingErr> {
+    let bytes = data.as_bytes();
+    if data.len() < 3 || bytes[2] != (b'_')  {
         Err(DecodingErr::MissingPrefix)?;
     }
 
-    let pfx = String::from_utf8(data[0..2].to_vec()).map_err(|_| DecodingErr::InvalidPrefix)?;
-    let payload = data[3..].to_vec();
+    let pfx = String::from_utf8(bytes[0..2].to_vec()).map_err(|_| DecodingErr::InvalidPrefix)?;
+    let payload = bytes[3..].to_vec();
 
     Ok((pfx, payload))
 }
@@ -304,8 +306,8 @@ fn decode_check(tp: KnownType, data: Bytes) -> Result<Bytes, DecodingErr> {
 }
 
 /// Decodes data as an id.
-pub fn decode_id(allowed_types: &[KnownType], data: Bytes) -> Result<id::Id, DecodingErr> {
-    let (tp, decoded) = decode(&data)?;
+pub fn decode_id(allowed_types: &[KnownType], data: &str) -> Result<id::Id, DecodingErr> {
+    let (tp, decoded) = decode(data)?;
 
     let val: [u8; 32] = decoded
         .try_into()
@@ -323,8 +325,8 @@ pub fn decode_id(allowed_types: &[KnownType], data: Bytes) -> Result<id::Id, Dec
 }
 
 /// Decodes a block hash. Requires an adequate prefix.
-pub fn decode_blockhash(data: Bytes) -> Result<Bytes, DecodingErr> {
-    let (tp, decoded) = decode(&data)?;
+pub fn decode_blockhash(data: &str) -> Result<Bytes, DecodingErr> {
+    let (tp, decoded) = decode(data)?;
     match tp {
         KnownType::KeyBlockHash => Ok(decoded),
         KnownType::MicroBlockHash => Ok(decoded),
@@ -424,10 +426,11 @@ mod test {
         fn encoding_and_prefix((tp, data) in valid_data()) {
             let pfx = tp.prefix();
             let enc = encode_data(tp, &data);
-            prop_assert_eq!(enc[2], b'_');
+            let bytes = enc.as_bytes();
+            prop_assert_eq!(bytes[2], b'_');
             let (pfx1, enc_data) = split_prefix(&enc).expect("Prefix split");
             prop_assert_eq!(pfx1, pfx);
-            prop_assert_eq!(enc_data.to_vec(), enc[3..].to_vec());
+            prop_assert_eq!(enc_data.to_vec(), bytes[3..].to_vec());
         }
 
         #[test]
@@ -447,7 +450,7 @@ mod test {
 
                 let id = id::Id{tag: t, val: id::EncodedId{bytes: val}};
             let enc = encode_id(&id);
-            let dec = decode_id(&allowed_types, enc).expect("Decoding id failed");
+            let dec = decode_id(&allowed_types, &enc).expect("Decoding id failed");
             prop_assert_eq!(id, dec);
         }
 
@@ -459,7 +462,7 @@ mod test {
             {
                 let id = id::Id{tag: t, val: id::EncodedId{bytes: val}};
             let enc = encode_id(&id);
-            let dec = decode_id(&allowed_types, enc);
+            let dec = decode_id(&allowed_types, &enc);
             prop_assert_eq!(Err(DecodingErr::InvalidPrefix), dec);
         }
 
