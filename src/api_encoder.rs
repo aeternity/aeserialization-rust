@@ -265,8 +265,8 @@ pub fn encode_id(id: &id::Id) -> String {
 
 /// Decodes raw data according to the prefixed type.
 pub fn decode(data: &str) -> Result<(KnownType, Bytes), DecodingErr> {
-    let (pfx, payload) = split_prefix(data)?;
-    let tp = KnownType::from_prefix(&pfx).ok_or(DecodingErr::InvalidPrefix)?;
+    let (tp, payload) = split_prefix(data)?;
+
     let decoded = decode_check(tp, &payload)?;
 
     if !tp.check_size(decoded.len()) {
@@ -276,14 +276,16 @@ pub fn decode(data: &str) -> Result<(KnownType, Bytes), DecodingErr> {
     Ok((tp, decoded))
 }
 
-fn split_prefix(data: &str) -> Result<(String, String), DecodingErr> {
+fn split_prefix(data: &str) -> Result<(KnownType, String), DecodingErr> {
     let (pfx, payload) = data.split_once('_').ok_or(DecodingErr::MissingPrefix)?;
 
     if pfx.len() != 2 {
         Err(DecodingErr::InvalidPrefix)?;
     }
 
-    Ok((pfx.to_string(), payload.to_string()))
+    let tp = KnownType::from_prefix(pfx).ok_or(DecodingErr::InvalidPrefix)?;
+
+    Ok((tp, payload.to_string()))
 }
 
 fn decode_check(tp: KnownType, data: &str) -> Result<Bytes, DecodingErr> {
