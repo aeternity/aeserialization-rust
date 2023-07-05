@@ -223,23 +223,23 @@ impl Encoding {
         vec![data, &c].concat()
     }
 
-    fn encode(self, data: &[u8]) -> Bytes {
+    fn encode(self, data: &[u8]) -> String {
         match self {
-            Encoding::Base58 => bs58::encode(data).into_vec(),
+            Encoding::Base58 => bs58::encode(data).into_string(),
             Encoding::Base64 => {
                 use base64::engine::general_purpose::STANDARD;
                 use base64::Engine;
-                STANDARD.encode(data).as_bytes().to_vec()
+                STANDARD.encode(data)
             }
         }
     }
 
-    fn encode_with_check(self, data: &[u8]) -> Bytes {
+    fn encode_with_check(self, data: &[u8]) -> String {
         let data_c = self.add_check(data);
         self.encode(&data_c)
     }
 
-    fn decode(self, data: &[u8]) -> Option<Bytes> {
+    fn decode(self, data: &str) -> Option<Bytes> {
         match self {
             Encoding::Base58 => bs58::decode(data).into_vec().ok(),
             Encoding::Base64 => {
@@ -255,11 +255,7 @@ impl Encoding {
 pub fn encode_data(t: KnownType, payload: &[u8]) -> String {
     let pfx = t.prefix();
     let enc = t.encoding().encode_with_check(payload);
-    let bytes = pfx.bytes()
-        .chain([b'_'])
-        .chain(enc)
-        .collect();
-    String::from_utf8(bytes).unwrap()
+    [&pfx, "_", &enc].concat()
 }
 
 /// Encodes an id. Includes a checksum.
@@ -271,7 +267,7 @@ pub fn encode_id(id: &id::Id) -> String {
 pub fn decode(data: &str) -> Result<(KnownType, Bytes), DecodingErr> {
     let (pfx, payload) = split_prefix(data)?;
     let tp = KnownType::from_prefix(&pfx).ok_or(DecodingErr::InvalidPrefix)?;
-    let decoded = decode_check(tp, payload)?;
+    let decoded = decode_check(tp, &payload)?;
 
     if !tp.check_size(decoded.len()) {
         Err(DecodingErr::IncorrectSize)?;
@@ -280,22 +276,20 @@ pub fn decode(data: &str) -> Result<(KnownType, Bytes), DecodingErr> {
     Ok((tp, decoded))
 }
 
-fn split_prefix(data: &str) -> Result<(String, Bytes), DecodingErr> {
-    let bytes = data.as_bytes();
-    if data.len() < 3 || bytes[2] != (b'_')  {
-        Err(DecodingErr::MissingPrefix)?;
+fn split_prefix(data: &str) -> Result<(String, String), DecodingErr> {
+    let (pfx, payload) = data.split_once('_').ok_or(DecodingErr::MissingPrefix)?;
+
+    if pfx.len() != 2 {
+        Err(DecodingErr::InvalidPrefix)?;
     }
 
-    let pfx = String::from_utf8(bytes[0..2].to_vec()).map_err(|_| DecodingErr::InvalidPrefix)?;
-    let payload = bytes[3..].to_vec();
-
-    Ok((pfx, payload))
+    Ok((pfx.to_string(), payload.to_string()))
 }
 
-fn decode_check(tp: KnownType, data: Bytes) -> Result<Bytes, DecodingErr> {
+fn decode_check(tp: KnownType, data: &str) -> Result<Bytes, DecodingErr> {
     let dec = tp
         .encoding()
-        .decode(&data)
+        .decode(data)
         .ok_or(DecodingErr::InvalidEncoding)?;
     let body_size = dec.len() - 4;
     let body = &dec[0..body_size];
@@ -426,11 +420,10 @@ mod test {
         fn encoding_and_prefix((tp, data) in valid_data()) {
             let pfx = tp.prefix();
             let enc = encode_data(tp, &data);
-            let bytes = enc.as_bytes();
-            prop_assert_eq!(bytes[2], b'_');
+            prop_assert_eq!(enc.as_bytes()[2], b'_');
             let (pfx1, enc_data) = split_prefix(&enc).expect("Prefix split");
             prop_assert_eq!(pfx1, pfx);
-            prop_assert_eq!(enc_data.to_vec(), bytes[3..].to_vec());
+            prop_assert_eq!(enc_data, &enc[3..]);
         }
 
         #[test]
