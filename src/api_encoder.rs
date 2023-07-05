@@ -223,23 +223,23 @@ impl Encoding {
         vec![data, &c].concat()
     }
 
-    fn encode(self, data: &[u8]) -> Bytes {
+    fn encode(self, data: &[u8]) -> String {
         match self {
-            Encoding::Base58 => bs58::encode(data).into_vec(),
+            Encoding::Base58 => bs58::encode(data).into_string(),
             Encoding::Base64 => {
                 use base64::engine::general_purpose::STANDARD;
                 use base64::Engine;
-                STANDARD.encode(data).as_bytes().to_vec()
+                STANDARD.encode(data)
             }
         }
     }
 
-    fn encode_with_check(self, data: &[u8]) -> Bytes {
+    fn encode_with_check(self, data: &[u8]) -> String {
         let data_c = self.add_check(data);
         self.encode(&data_c)
     }
 
-    fn decode(self, data: &[u8]) -> Option<Bytes> {
+    fn decode(self, data: &str) -> Option<Bytes> {
         match self {
             Encoding::Base58 => bs58::decode(data).into_vec().ok(),
             Encoding::Base64 => {
@@ -252,25 +252,22 @@ impl Encoding {
 }
 
 /// Encodes raw data accordingly to the type. Includes a checksum.
-pub fn encode_data(t: KnownType, payload: &[u8]) -> Bytes {
+pub fn encode_data(t: KnownType, payload: &[u8]) -> String {
     let pfx = t.prefix();
     let enc = t.encoding().encode_with_check(payload);
-    pfx.bytes()
-        .chain("_".bytes())
-        .chain(enc)
-        .collect()
+    [&pfx, "_", &enc].concat()
 }
 
 /// Encodes an id. Includes a checksum.
-pub fn encode_id(id: &id::Id) -> Bytes {
+pub fn encode_id(id: &id::Id) -> String {
     encode_data(KnownType::from_id_tag(id.tag), &id.val.bytes)
 }
 
 /// Decodes raw data according to the prefixed type.
-pub fn decode(data: &[u8]) -> Result<(KnownType, Bytes), DecodingErr> {
-    let (pfx, payload) = split_prefix(data)?;
-    let tp = KnownType::from_prefix(&pfx).ok_or(DecodingErr::InvalidPrefix)?;
-    let decoded = decode_check(tp, payload)?;
+pub fn decode(data: &str) -> Result<(KnownType, Bytes), DecodingErr> {
+    let (tp, payload) = split_prefix(data)?;
+
+    let decoded = decode_check(tp, &payload)?;
 
     if !tp.check_size(decoded.len()) {
         Err(DecodingErr::IncorrectSize)?;
@@ -279,21 +276,22 @@ pub fn decode(data: &[u8]) -> Result<(KnownType, Bytes), DecodingErr> {
     Ok((tp, decoded))
 }
 
-fn split_prefix(data: &[u8]) -> Result<(String, Bytes), DecodingErr> {
-    if data.len() < 3 || data[2] != (b'_') {
-        Err(DecodingErr::MissingPrefix)?;
+fn split_prefix(data: &str) -> Result<(KnownType, String), DecodingErr> {
+    let (pfx, payload) = data.split_once('_').ok_or(DecodingErr::MissingPrefix)?;
+
+    if pfx.len() != 2 {
+        Err(DecodingErr::InvalidPrefix)?;
     }
 
-    let pfx = String::from_utf8(data[0..2].to_vec()).map_err(|_| DecodingErr::InvalidPrefix)?;
-    let payload = data[3..].to_vec();
+    let tp = KnownType::from_prefix(pfx).ok_or(DecodingErr::InvalidPrefix)?;
 
-    Ok((pfx, payload))
+    Ok((tp, payload.to_string()))
 }
 
-fn decode_check(tp: KnownType, data: Bytes) -> Result<Bytes, DecodingErr> {
+fn decode_check(tp: KnownType, data: &str) -> Result<Bytes, DecodingErr> {
     let dec = tp
         .encoding()
-        .decode(&data)
+        .decode(data)
         .ok_or(DecodingErr::InvalidEncoding)?;
     let body_size = dec.len() - 4;
     let body = &dec[0..body_size];
@@ -304,8 +302,8 @@ fn decode_check(tp: KnownType, data: Bytes) -> Result<Bytes, DecodingErr> {
 }
 
 /// Decodes data as an id.
-pub fn decode_id(allowed_types: &[KnownType], data: Bytes) -> Result<id::Id, DecodingErr> {
-    let (tp, decoded) = decode(&data)?;
+pub fn decode_id(allowed_types: &[KnownType], data: &str) -> Result<id::Id, DecodingErr> {
+    let (tp, decoded) = decode(data)?;
 
     let val: [u8; 32] = decoded
         .try_into()
@@ -323,8 +321,8 @@ pub fn decode_id(allowed_types: &[KnownType], data: Bytes) -> Result<id::Id, Dec
 }
 
 /// Decodes a block hash. Requires an adequate prefix.
-pub fn decode_blockhash(data: Bytes) -> Result<Bytes, DecodingErr> {
-    let (tp, decoded) = decode(&data)?;
+pub fn decode_blockhash(data: &str) -> Result<Bytes, DecodingErr> {
+    let (tp, decoded) = decode(data)?;
     match tp {
         KnownType::KeyBlockHash => Ok(decoded),
         KnownType::MicroBlockHash => Ok(decoded),
@@ -424,10 +422,10 @@ mod test {
         fn encoding_and_prefix((tp, data) in valid_data()) {
             let pfx = tp.prefix();
             let enc = encode_data(tp, &data);
-            prop_assert_eq!(enc[2], b'_');
+            prop_assert_eq!(enc.as_bytes()[2], b'_');
             let (pfx1, enc_data) = split_prefix(&enc).expect("Prefix split");
             prop_assert_eq!(pfx1, pfx);
-            prop_assert_eq!(enc_data.to_vec(), enc[3..].to_vec());
+            prop_assert_eq!(enc_data, &enc[3..]);
         }
 
         #[test]
@@ -447,7 +445,7 @@ mod test {
 
                 let id = id::Id{tag: t, val: id::EncodedId{bytes: val}};
             let enc = encode_id(&id);
-            let dec = decode_id(&allowed_types, enc).expect("Decoding id failed");
+            let dec = decode_id(&allowed_types, &enc).expect("Decoding id failed");
             prop_assert_eq!(id, dec);
         }
 
@@ -459,7 +457,7 @@ mod test {
             {
                 let id = id::Id{tag: t, val: id::EncodedId{bytes: val}};
             let enc = encode_id(&id);
-            let dec = decode_id(&allowed_types, enc);
+            let dec = decode_id(&allowed_types, &enc);
             prop_assert_eq!(Err(DecodingErr::InvalidPrefix), dec);
         }
 
