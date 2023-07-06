@@ -420,11 +420,10 @@ mod test {
 
         #[test]
         fn encoding_and_prefix((tp, data) in valid_data()) {
-            let pfx = tp.prefix();
             let enc = encode_data(tp, &data);
             prop_assert_eq!(enc.as_bytes()[2], b'_');
             let (pfx1, enc_data) = split_prefix(&enc).expect("Prefix split");
-            prop_assert_eq!(pfx1, pfx);
+            prop_assert_eq!(pfx1, tp);
             prop_assert_eq!(enc_data, &enc[3..]);
         }
 
