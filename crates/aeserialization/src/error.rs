@@ -26,6 +26,8 @@ pub enum DecodingErr {
     IncorrectSize,
     /// Failure in decoding payload of an object (eg. malformed base64).
     InvalidEncoding,
+    /// Checksum does not match.
+    InvalidCheck,
     /// Malformed contract code.
     InvalidCode,
 }
