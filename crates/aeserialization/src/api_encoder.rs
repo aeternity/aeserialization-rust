@@ -1,6 +1,6 @@
 use crate::error::DecodingErr;
 use crate::id;
-use crate::Bytes;
+use crate::bytes::Bytes;
 
 /// Possible chain-object types.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -215,17 +215,18 @@ impl Encoding {
     fn make_check(self, data: &[u8]) -> Bytes {
         use sha256::digest;
         let d = digest(digest(data));
-        d.as_bytes()[..4].to_vec()
+        Bytes::from(&d.as_bytes()[..4])
     }
 
     fn add_check(self, data: &[u8]) -> Bytes {
         let c = self.make_check(data);
-        vec![data, &c].concat()
+        Bytes::from(&vec![data, &c].concat())
     }
 
     fn encode(self, data: &[u8]) -> String {
         match self {
-            Encoding::Base58 => bs58::encode(data).into_string(),
+            Encoding::Base58 =>
+                bs58::encode(data).into_string(),
             Encoding::Base64 => {
                 use base64::engine::general_purpose::STANDARD;
                 use base64::Engine;
@@ -241,11 +242,12 @@ impl Encoding {
 
     fn decode(self, data: &str) -> Option<Bytes> {
         match self {
-            Encoding::Base58 => bs58::decode(data).into_vec().ok(),
+            Encoding::Base58 =>
+                bs58::decode(data).into_vec().ok(),
             Encoding::Base64 => {
                 use base64::Engine;
                 use base64::engine::general_purpose::STANDARD;
-                STANDARD.decode(data).ok()
+                STANDARD.decode(data).ok().map(Bytes::from)
             }
         }
     }
@@ -298,7 +300,7 @@ fn decode_check(tp: KnownType, data: &str) -> Result<Bytes, DecodingErr> {
     let c = &dec[body_size..body_size + 4];
     assert_eq!(c, tp.encoding().make_check(body));
 
-    Ok(body.to_vec())
+    Ok(Bytes::from(body))
 }
 
 /// Decodes data as an id.
