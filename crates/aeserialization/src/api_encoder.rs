@@ -212,24 +212,30 @@ pub enum Encoding {
 }
 
 impl Encoding {
-    fn make_check(self, data: &[u8]) -> Bytes {
-        use sha256::digest;
-        let d = digest(digest(data));
-        d.as_bytes()[..4].to_vec()
+    fn make_check(data: &[u8]) -> Bytes {
+        use sha2::{Digest, Sha256};
+        let mut hasher = <Sha256 as Digest>::new();
+
+        hasher.update(data);
+        let check1 = hasher.finalize_reset();
+        hasher.update(check1);
+        let check2 = hasher.finalize_reset();
+        check2[..4].to_vec()
     }
 
     fn add_check(self, data: &[u8]) -> Bytes {
-        let c = self.make_check(data);
+        let c = Self::make_check(data);
         vec![data, &c].concat()
     }
 
     fn encode(self, data: &[u8]) -> String {
         match self {
-            Encoding::Base58 => bs58::encode(data).into_string(),
+            Encoding::Base58 =>
+                bs58::encode(data).into_string(),
             Encoding::Base64 => {
-                use base64::engine::general_purpose::STANDARD;
                 use base64::Engine;
-                STANDARD.encode(data)
+                let engine = base64::engine::general_purpose::STANDARD;
+                engine.encode(data)
             }
         }
     }
@@ -241,11 +247,12 @@ impl Encoding {
 
     fn decode(self, data: &str) -> Option<Bytes> {
         match self {
-            Encoding::Base58 => bs58::decode(data).into_vec().ok(),
+            Encoding::Base58 =>
+                bs58::decode(data).into_vec().ok(),
             Encoding::Base64 => {
                 use base64::Engine;
-                use base64::engine::general_purpose::STANDARD;
-                STANDARD.decode(data).ok()
+                let engine = base64::engine::general_purpose::STANDARD;
+                engine.decode(data).ok()
             }
         }
     }
@@ -266,7 +273,6 @@ pub fn encode_id(id: &id::Id) -> String {
 /// Decodes raw data according to the prefixed type.
 pub fn decode(data: &str) -> Result<(KnownType, Bytes), DecodingErr> {
     let (tp, payload) = split_prefix(data)?;
-
     let decoded = decode_check(tp, &payload)?;
 
     if !tp.check_size(decoded.len()) {
@@ -288,15 +294,19 @@ fn split_prefix(data: &str) -> Result<(KnownType, String), DecodingErr> {
     Ok((tp, payload.to_string()))
 }
 
-fn decode_check(tp: KnownType, data: &str) -> Result<Bytes, DecodingErr> {
+pub fn decode_check(tp: KnownType, data: &str) -> Result<Bytes, DecodingErr> {
     let dec = tp
         .encoding()
         .decode(data)
         .ok_or(DecodingErr::InvalidEncoding)?;
     let body_size = dec.len() - 4;
     let body = &dec[0..body_size];
-    let c = &dec[body_size..body_size + 4];
-    assert_eq!(c, tp.encoding().make_check(body));
+    let check = &dec[body_size..body_size + 4];
+    let made_check = Encoding::make_check(body);
+
+    if check != made_check {
+        Err(DecodingErr::InvalidCheck)?;
+    }
 
     Ok(body.to_vec())
 }
