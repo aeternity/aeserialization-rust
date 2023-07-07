@@ -3,6 +3,7 @@ pub mod contract_code;
 pub mod rlp;
 pub mod error;
 pub mod api_encoder;
+pub mod bytes;
 
 // TODO WASM
 // use wasm_bindgen::prelude::*;
@@ -12,5 +13,3 @@ pub mod api_encoder;
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
-pub type Bytes = Vec<u8>;

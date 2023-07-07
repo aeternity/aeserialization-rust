@@ -1,4 +1,5 @@
-use crate::{error, Bytes};
+use crate::error;
+use crate::bytes::Bytes;
 use num_traits::ToPrimitive;
 
 /// Max single-byte size description
@@ -37,7 +38,7 @@ impl RlpItem {
     /// Unpack as a byte array.
     pub fn byte_array(&self) -> Result<Bytes, error::DecodingErr> {
         match self {
-            RlpItem::ByteArray(arr) => Ok(arr.to_vec()),
+            RlpItem::ByteArray(arr) => Ok(arr.clone()),
             RlpItem::List(_) => Err(error::DecodingErr::InvalidBinary),
         }
     }
@@ -55,9 +56,9 @@ impl RlpItem {
         match self {
             RlpItem::ByteArray(bytes) => {
                 if bytes.len() == 1 && bytes[0] <= UNTAGGED_LIMIT {
-                    bytes.to_vec()
+                    Bytes::from(bytes)
                 } else {
-                    Self::add_size(BYTE_ARRAY_OFFSET, bytes.to_vec())
+                    Self::add_size(BYTE_ARRAY_OFFSET, Bytes::from(bytes))
                 }
             }
             RlpItem::List(items) => {
@@ -76,8 +77,8 @@ impl RlpItem {
         match Self::try_deserialize(bytes)? {
             (item, []) => Ok(item),
             (item, rest) => Err(DecodingErr::Trailing {
-                input: bytes.to_vec(),
-                undecoded: rest.to_vec(),
+                input: Bytes::from(bytes),
+                undecoded: Bytes::from(rest),
                 decoded: item,
             }),
         }
@@ -90,7 +91,7 @@ impl RlpItem {
 
     fn try_decode_at(bytes: &[u8], at: usize) -> Result<(RlpItem, &[u8]), DecodingErr> {
         let res = match bytes[0] {
-            ..=UNTAGGED_LIMIT => (RlpItem::ByteArray(bytes[0..1].to_vec()), &bytes[1..]),
+            ..=UNTAGGED_LIMIT => (RlpItem::ByteArray(Bytes::from(&bytes[0..1])), &bytes[1..]),
             BYTE_ARRAY_OFFSET..=BYTE_ARRAY_UNTAGGED_LIMIT => {
                 let len: usize = (bytes[0] - BYTE_ARRAY_OFFSET) as usize;
 
@@ -103,7 +104,7 @@ impl RlpItem {
                 }
 
                 (
-                    RlpItem::ByteArray(bytes[1..len + 1].to_vec()),
+                    RlpItem::ByteArray(Bytes::from(&bytes[1..len + 1])),
                     &bytes[len + 1..],
                 )
             }
@@ -122,9 +123,9 @@ impl RlpItem {
                     Err(DecodingErr::LeadingZerosInSize { position: at + 1 })?
                 }
 
-                let len: usize = bytes_to_size(bytes[1..len_bytes + 1].to_vec());
+                let len: usize = bytes_to_size(Bytes::from(&bytes[1..len_bytes + 1]));
                 (
-                    RlpItem::ByteArray(bytes[len_bytes + 1..len_bytes + len + 1].to_vec()),
+                    RlpItem::ByteArray(Bytes::from(&bytes[len_bytes + 1..len_bytes + len + 1])),
                     &bytes[len_bytes + len + 1..],
                 )
             }
@@ -141,7 +142,7 @@ impl RlpItem {
                     Err(DecodingErr::LeadingZerosInSize { position: at + 1 })?
                 }
 
-                let len: usize = bytes_to_size(bytes[1..len_bytes + 1].to_vec());
+                let len: usize = bytes_to_size(Bytes::from(&bytes[1..len_bytes + 1]));
                 let rest = &bytes[1 + len_bytes + len..];
                 let list_bytes = &bytes[1 + len_bytes..1 + len_bytes + len];
 
@@ -169,7 +170,7 @@ impl RlpItem {
             let mut res = Vec::with_capacity(bytes.len() + 1);
             res.push(offset + bytes.len() as u8);
             res.extend(bytes);
-            res
+            Bytes::from(&res)
         } else {
             let size_bytes = usize_to_min_be_bytes(bytes.len());
             let tagged_size = (UNTAGGED_SIZE_LIMIT as usize + offset as usize + size_bytes.len())
@@ -180,7 +181,7 @@ impl RlpItem {
             res.push(tagged_size);
             res.extend(size_bytes);
             res.extend(bytes);
-            res
+            Bytes::from(&res)
         }
     }
 }
@@ -192,13 +193,13 @@ fn bytes_to_size(mut bytes: Bytes) -> usize {
     bytes.resize(total, 0);
     bytes.reverse();
 
-    usize::from_be_bytes(bytes.try_into().unwrap())
+    usize::from_be_bytes(bytes.to_vec().try_into().unwrap())
 }
 
 fn usize_to_min_be_bytes(n: usize) -> Bytes {
-    let byte_len = n.ilog(256) as usize + 1;
+    let byte_len = if n > 0 {n.ilog(256) as usize + 1} else {1};
     let bytes = n.to_be_bytes();
-    bytes[bytes.len() - byte_len..].to_vec()
+    Bytes::from(&bytes[bytes.len() - byte_len..])
 }
 
 /// An RLP decoding error.
@@ -279,6 +280,12 @@ impl<T: ToRlpItem> ToRlpItem for Vec<T> {
 }
 
 impl<T: ToRlpItem> ToRlpItem for [T] {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::List(self.iter().map(|x| x.to_rlp_item()).collect())
+    }
+}
+
+impl<const SIZE: usize, T: ToRlpItem> ToRlpItem for [T; SIZE] {
     fn to_rlp_item(&self) -> RlpItem {
         RlpItem::List(self.iter().map(|x| x.to_rlp_item()).collect())
     }
@@ -369,7 +376,7 @@ mod erlang {
         fn decode(term: Term) -> NifResult<RlpItem> {
             if term.is_binary() {
                 Ok(RlpItem::ByteArray(
-                    term.decode_as_binary()?.as_slice().to_vec(),
+                    Bytes::from(term.decode_as_binary()?.as_slice()),
                 ))
             } else if term.is_list() {
                 let list: Vec<Term> = term.decode()?;
@@ -474,7 +481,7 @@ mod test {
         fn one_byte_size_bytes(input_bytes in any_u8vec(1u8, UNTAGGED_SIZE_LIMIT + 1)) {
             prop_assume!(input_bytes[0] > UNTAGGED_LIMIT);
 
-            let input  = RlpItem::ByteArray(input_bytes.to_vec());
+            let input  = RlpItem::ByteArray(Bytes::from(&input_bytes));
             let expect = vec![BYTE_ARRAY_OFFSET + input_bytes.len() as u8]
                 .into_iter()
                 .chain(input_bytes)
@@ -487,7 +494,7 @@ mod test {
             let len = input_bytes.len();
             let len_bytes = len.ilog(256) as u8 + 1;
             let tag = BYTE_ARRAY_OFFSET + UNTAGGED_SIZE_LIMIT + len_bytes;
-            let input = RlpItem::ByteArray(input_bytes.to_vec());
+            let input = RlpItem::ByteArray(Bytes::from(&input_bytes));
             let expect = vec![tag]
                 .into_iter()
                 .chain(usize_to_min_be_bytes(len))
