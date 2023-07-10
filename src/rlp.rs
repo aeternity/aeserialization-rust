@@ -266,6 +266,12 @@ impl ToRlpItem for u32 {
     }
 }
 
+impl ToRlpItem for usize {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::ByteArray(usize_to_min_be_bytes(*self))
+    }
+}
+
 impl ToRlpItem for bool {
     fn to_rlp_item(&self) -> RlpItem {
         RlpItem::ByteArray(vec![*self as u8])
