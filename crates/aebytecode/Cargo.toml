@@ -1,0 +1,13 @@
+[package]
+name = "aebytecode"
+version = "0.1.0"
+authors = ["Gaith Hallak"]
+edition = "2021"
+
+[lib]
+name = "aeb"
+
+[dependencies]
+num-bigint = "0.4"
+num-traits = "0.2"
+aeserialization = { path = "../aeserialization" }
