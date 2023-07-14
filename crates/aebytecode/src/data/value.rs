@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use num_bigint::BigInt;
+use num_bigint::{BigInt, Sign};
 
 use aeser::rlp::{ToRlpItem, RlpItem, FromRlpItem};
 use aeser::Bytes;
@@ -185,6 +185,22 @@ impl Value {
             FALSE => (Boolean(false), &bytes[1..]),
             EMPTY_TUPLE => (Tuple(vec![]), &bytes[1..]),
             EMPTY_STRING => (String(vec![]), &bytes[1..]),
+            NEG_BIG_INT => {
+                let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
+                (Integer(BigInt::from_bytes_be(Sign::Minus, &decoded) - BigInt::from(SMALL_INT_SIZE)), rest)
+            }
+            POS_BIG_INT => {
+                let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
+                (Integer(BigInt::from_bytes_be(Sign::Plus, &decoded) + BigInt::from(SMALL_INT_SIZE)), rest)
+            }
+            NEG_BITS => {
+                let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
+                (Bits(BigInt::from_bytes_be(Sign::Minus, &decoded)), rest)
+            }
+            POS_BITS => {
+                let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
+                (Bits(BigInt::from_bytes_be(Sign::Plus, &decoded)), rest)
+            }
             OBJECT =>
                 if bytes.len() < 3 {
                     Err(DeserErr::InvalidObject)?
@@ -213,6 +229,14 @@ impl Value {
                     };
                     (value, rest)
                 }
+            b if b & 0b1000_0001 == ((POS_SIGN << 7) | SMALL_INT) => {
+                let n = BigInt::from_bytes_be(Sign::Plus, &[(b & 0b0111_1110) >> 1]);
+                (Integer(n), &bytes[1..])
+            }
+            b if b & 0b1000_0001 == ((NEG_SIGN << 7) | SMALL_INT) => {
+                let n = BigInt::from_bytes_be(Sign::Minus, &[(b & 0b0111_1110) >> 1]);
+                (Integer(n), &bytes[1..])
+            }
             b if b & 0b0000_0011 == SHORT_STRING => {
                 let size = (b >> 2) as usize;
                 (String(bytes[1..size + 1].to_vec()), &bytes[size + 1..])
@@ -248,4 +272,12 @@ fn serialize_address_object(address: &Bytes, object_id: u8) -> Bytes {
     let mut res = vec![OBJECT, object_id];
     res.extend(address.to_rlp_item().serialize());
     res
+}
+
+fn rlp_decode_bytes(bytes: &[u8]) -> Result<(Bytes, &[u8]), DeserErr> {
+    let (item, rest) = RlpItem::try_deserialize(bytes)
+        .map_err(|e| DeserErr::RlpErr(e))?;
+    let decoded = Vec::<u8>::from_rlp_item(&item)
+        .map_err(|e| DeserErr::ExternalErr(e))?;
+    Ok((decoded, rest))
 }
