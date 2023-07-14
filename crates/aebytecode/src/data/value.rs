@@ -2,6 +2,7 @@ use num_bigint::{BigInt, Sign};
 
 use aeser::rlp::{ToRlpItem, RlpItem, FromRlpItem};
 use aeser::Bytes;
+use num_traits::{ToPrimitive, Zero};
 
 use super::*;
 use consts::*;
@@ -198,6 +199,20 @@ impl Value {
             POS_BITS => {
                 let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
                 (Bits(BigInt::from_bytes_be(Sign::Plus, &decoded)), rest)
+            }
+            LONG_STRING => {
+                match Self::try_deserialize(&bytes[1..])? {
+                    (Integer(n), rest) if n.is_positive() || n.is_zero() => {
+                        match n.to_usize() {
+                            Some(x) => {
+                                let size = x + SHORT_STRING_SIZE;
+                                (String(rest[..size].to_vec()), &rest[size..])
+                            }
+                            None => Err(DeserErr::InvalidString)?
+                        }
+                    }
+                    _ => Err(DeserErr::InvalidString)?
+                }
             }
             OBJECT =>
                 if bytes.len() < 3 {

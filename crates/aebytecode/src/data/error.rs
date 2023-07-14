@@ -36,4 +36,5 @@ pub enum DeserErr {
     InvalidTuple,
     InvalidTupleOrVariant,
     InvalidTypeObjectByte(u8),
+    InvalidString,
 }

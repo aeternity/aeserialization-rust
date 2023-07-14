@@ -52,8 +52,8 @@ mod test {
                 any::<bool>().prop_map(Value::Boolean),
                 arb_bigint().prop_map(Value::Integer),
                 arb_bigint().prop_map(Value::Bits),
+                any::<Vec<u8>>().prop_map(Value::String),
                 //any::<Vec<u8>>().prop_map(Value::Bytes),
-                //any::<Vec<u8>>().prop_map(Value::String),
                 //any::<Type>().prop_map(Value::Typerep),
             ].boxed()
             //leaf.prop_recursive(
