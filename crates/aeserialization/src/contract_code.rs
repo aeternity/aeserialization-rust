@@ -30,6 +30,12 @@ impl ToRlpItem for TypeInfo {
     }
 }
 
+impl ToRlpItem for Vec<TypeInfo> {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::List(self.iter().map(|x| x.to_rlp_item()).collect())
+    }
+}
+
 impl FromRlpItem for TypeInfo {
     fn from_rlp_item(item: &RlpItem) -> Result<Self, DecodingErr> {
         let items = item.list().map_err(|_| DecodingErr::InvalidRlp)?;
@@ -45,6 +51,13 @@ impl FromRlpItem for TypeInfo {
             arg_type: items[3].byte_array()?,
             out_type: items[4].byte_array()?,
         })
+    }
+}
+
+impl FromRlpItem for Vec<TypeInfo> {
+    fn from_rlp_item(item: &RlpItem) -> Result<Self, DecodingErr> {
+        let rlps = item.list()?;
+        rlps.into_iter().map(|x| TypeInfo::from_rlp_item(&x)).collect()
     }
 }
 

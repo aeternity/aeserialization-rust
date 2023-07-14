@@ -283,13 +283,25 @@ impl ToRlpItem for bool {
     }
 }
 
-impl<T: ToRlpItem> ToRlpItem for Vec<T> {
+impl ToRlpItem for Vec<u8> {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::ByteArray(self.to_vec())
+    }
+}
+
+impl ToRlpItem for [u8] {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::ByteArray(self.to_vec())
+    }
+}
+
+impl ToRlpItem for Vec<RlpItem> {
     fn to_rlp_item(&self) -> RlpItem {
         RlpItem::List(self.iter().map(|x| x.to_rlp_item()).collect())
     }
 }
 
-impl<T: ToRlpItem> ToRlpItem for [T] {
+impl ToRlpItem for [RlpItem] {
     fn to_rlp_item(&self) -> RlpItem {
         RlpItem::List(self.iter().map(|x| x.to_rlp_item()).collect())
     }
@@ -347,11 +359,15 @@ impl FromRlpItem for bool {
     }
 }
 
-impl<T: FromRlpItem> FromRlpItem for Vec<T> {
+impl FromRlpItem for Vec<u8> {
     fn from_rlp_item(item: &RlpItem) -> Result<Self, error::DecodingErr> {
-        let rlps = item.list()?;
+        item.byte_array()
+    }
+}
 
-        rlps.into_iter().map(|x| T::from_rlp_item(&x)).collect()
+impl FromRlpItem for Vec<RlpItem> {
+    fn from_rlp_item(item: &RlpItem) -> Result<Self, error::DecodingErr> {
+        item.list()
     }
 }
 
