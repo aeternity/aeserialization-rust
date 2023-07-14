@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use num_bigint::{BigInt, Sign};
 
 use aeser::rlp::{ToRlpItem, RlpItem, FromRlpItem};
@@ -10,7 +8,7 @@ use consts::*;
 use datatype::Type;
 use error::{SerErr, DeserErr};
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Boolean(bool),
     Integer(BigInt),
@@ -19,16 +17,6 @@ pub enum Value {
     Tuple(Vec<Value>),
     String(Bytes),
     Bytes(Bytes),
-    Map(HashMap<Value, Value>),
-    StoreMap { // TODO: check if these are the right types
-        cache: HashMap<Value, Value>,
-        id: u32
-    },
-    Variant {
-        arities: Vec<u8>,
-        tag: u8,
-        values: Vec<Value>
-    },
     Address(Bytes),
     Contract(Bytes),
     Oracle(Bytes),
@@ -36,6 +24,16 @@ pub enum Value {
     Channel(Bytes),
     ContractBytearray(Bytes),
     Typerep(Type),
+    //Map(HashMap<Value, Value>),
+    //StoreMap { // TODO: check if these are the right types
+    //    cache: HashMap<Value, Value>,
+    //    id: u32
+    //},
+    Variant {
+        arities: Vec<u8>,
+        tag: u8,
+        values: Vec<Value>
+    },
 }
 
 impl Value {
@@ -90,37 +88,37 @@ impl Value {
                 res
             }
             Typerep(t) => t.serialize()?,
-            Map(map) => {
-                let mut res = vec![MAP];
-                res.extend(map.len().to_rlp_item().serialize());
+            //Map(map) => {
+            //    let mut res = vec![MAP];
+            //    res.extend(map.len().to_rlp_item().serialize());
 
-                if !map.is_empty() {
-                    let some_key = map.keys().next().unwrap();
-                    let some_val = map.values().next().unwrap();
-                    if map.keys().any(|k| match k { Map(_) => true, _ => false }) {
-                        Err(SerErr::MapAsKeyType)?
-                    }
-                    if !map.keys().all(|k| std::mem::discriminant(k) == std::mem::discriminant(some_key)) {
-                        Err(SerErr::HeteroMapKeys)?
-                    }
-                    if !map.values().all(|v| std::mem::discriminant(v) == std::mem::discriminant(some_val)) {
-                        Err(SerErr::HeteroMapValues)?
-                    }
-                }
+            //    if !map.is_empty() {
+            //        let some_key = map.keys().next().unwrap();
+            //        let some_val = map.values().next().unwrap();
+            //        if map.keys().any(|k| match k { Map(_) => true, _ => false }) {
+            //            Err(SerErr::MapAsKeyType)?
+            //        }
+            //        if !map.keys().all(|k| std::mem::discriminant(k) == std::mem::discriminant(some_key)) {
+            //            Err(SerErr::HeteroMapKeys)?
+            //        }
+            //        if !map.values().all(|v| std::mem::discriminant(v) == std::mem::discriminant(some_val)) {
+            //            Err(SerErr::HeteroMapValues)?
+            //        }
+            //    }
 
-                for (key, val) in map.into_iter() {
-                    res.extend(key.serialize()?);
-                    res.extend(val.serialize()?)
-                }
-                res
-            }
-            StoreMap{cache, id} => {
-                if cache.is_empty() {
-                    [vec![MAP_ID], id.to_rlp_item().serialize()].concat()
-                } else {
-                    Err(SerErr::NonEmptyStoreMapCache)?
-                }
-            }
+            //    for (key, val) in map.into_iter() {
+            //        res.extend(key.serialize()?);
+            //        res.extend(val.serialize()?)
+            //    }
+            //    res
+            //}
+            //StoreMap{cache, id} => {
+            //    if cache.is_empty() {
+            //        [vec![MAP_ID], id.to_rlp_item().serialize()].concat()
+            //    } else {
+            //        Err(SerErr::NonEmptyStoreMapCache)?
+            //    }
+            //}
             Variant{arities, tag, values} => {
                 if (*tag as usize) < arities.len() {
                     let arity = arities[*tag as usize] as usize;
@@ -212,13 +210,7 @@ impl Value {
                             Err(DeserErr::InvalidBytesObject)?
                     }
                 } else {
-                    let (decoded, rest) = {
-                        let (item, rest) = RlpItem::try_deserialize(&bytes[2..])
-                            .map_err(|e| DeserErr::RlpErr(e))?;
-                        let decoded = Vec::<u8>::from_rlp_item(&item)
-                            .map_err(|e| DeserErr::ExternalErr(e))?;
-                        (decoded, rest)
-                    };
+                    let (decoded, rest) = rlp_decode_bytes(&bytes[2..])?;
                     let value = match bytes[1] {
                         OTYPE_ADDRESS => Address(decoded),
                         OTYPE_CONTRACT => Contract(decoded),

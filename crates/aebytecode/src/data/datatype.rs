@@ -8,7 +8,7 @@ use consts::*;
 use error::{SerErr, DeserErr};
 use value::Value;
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Integer,
     Boolean,
@@ -32,7 +32,7 @@ pub enum Type {
     ContractBytearray
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BytesSize {
     Sized(usize),
     Unsized

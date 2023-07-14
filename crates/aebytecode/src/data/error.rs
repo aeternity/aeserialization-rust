@@ -2,6 +2,7 @@ use aeser::{rlp, error, Bytes};
 
 use super::value::Value;
 
+#[derive(Debug)]
 pub enum SerErr {
     NonEmptyStoreMapCache,
     InvalidVariantTag,
@@ -13,6 +14,7 @@ pub enum SerErr {
     VariantSizeLimitExceeded
 }
 
+#[derive(Debug)]
 pub enum DeserErr {
     Empty,
     InvalidIdByte(u8),

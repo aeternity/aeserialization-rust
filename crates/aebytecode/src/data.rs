@@ -27,3 +27,53 @@ fn serialize_int(n: &BigInt) -> Bytes {
         [vec![big_int_byte], diff].concat()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::value::Value;
+    use num_bigint::{BigInt, Sign};
+    use proptest::{prelude::*, arbitrary::Arbitrary};
+
+    fn arb_bigint() -> impl Strategy<Value = BigInt> {
+        (any::<bool>(), any::<Vec<u8>>())
+            .prop_map(|(sign, bytes)|
+                BigInt::from_bytes_be(
+                    if sign {Sign::Plus} else {Sign::Minus},
+                    &bytes
+                )
+            )
+    }
+
+    impl Arbitrary for Value {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+        fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+            prop_oneof![
+                any::<bool>().prop_map(Value::Boolean),
+                arb_bigint().prop_map(Value::Integer),
+                arb_bigint().prop_map(Value::Bits),
+                //any::<Vec<u8>>().prop_map(Value::Bytes),
+                //any::<Vec<u8>>().prop_map(Value::String),
+                //any::<Type>().prop_map(Value::Typerep),
+            ].boxed()
+            //leaf.prop_recursive(
+            //    5,    // deep
+            //    256,  // max nodes
+            //    1000, // max items per collection
+            //    |inner| prop_oneof! {
+            //        prop::collection::vec(inner.clone(), 0..10000).prop_map(Value::List),
+            //        prop::collection::vec(inner, 0..10000).prop_map(Value::Tuple),
+            //    }
+            //).boxed()
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn value_round_trip(value: Value) {
+            let ser = value.serialize();
+            let deser = Value::deserialize(&ser.unwrap());
+            prop_assert_eq!(deser.unwrap(), value);
+        }
+    }
+}
