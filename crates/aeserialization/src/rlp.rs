@@ -196,9 +196,14 @@ fn bytes_to_size(mut bytes: Bytes) -> usize {
 }
 
 fn usize_to_min_be_bytes(n: usize) -> Bytes {
-    let byte_len = n.ilog(256) as usize + 1;
-    let bytes = n.to_be_bytes();
-    bytes[bytes.len() - byte_len..].to_vec()
+    // argument of integer logarithm must be positive so 0 is handled separately
+    if n == 0 {
+        vec![0]
+    } else {
+        let byte_len = n.ilog(256) as usize + 1;
+        let bytes = n.to_be_bytes();
+        bytes[bytes.len() - byte_len..].to_vec()
+    }
 }
 
 /// An RLP decoding error.
