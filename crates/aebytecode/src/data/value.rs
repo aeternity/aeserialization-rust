@@ -200,7 +200,7 @@ impl Value {
                 let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
                 (Bits(BigInt::from_bytes_be(Sign::Plus, &decoded)), rest)
             }
-            LONG_STRING => {
+            LONG_STRING =>
                 match Self::try_deserialize(&bytes[1..])? {
                     (Integer(n), rest) if n.is_positive() || n.is_zero() => {
                         match n.to_usize() {
@@ -213,7 +213,18 @@ impl Value {
                     }
                     _ => Err(DeserErr::InvalidString)?
                 }
-            }
+            CONTRACT_BYTEARRAY =>
+                match Self::try_deserialize(&bytes[1..])? {
+                    (Integer(n), rest) if n.is_positive() || n.is_zero() => {
+                        match n.to_usize() {
+                            Some(size) => {
+                                (ContractBytearray(rest[..size].to_vec()), &rest[size..])
+                            }
+                            None => Err(DeserErr::InvalidContractBytearray)?
+                        }
+                    }
+                    _ => Err(DeserErr::InvalidContractBytearray)?
+                }
             OBJECT =>
                 if bytes.len() < 3 {
                     Err(DeserErr::InvalidObject)?
