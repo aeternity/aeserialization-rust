@@ -10,26 +10,26 @@ use value::Value;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
-    Integer,
-    Boolean,
     Any,
-    List(Box<Type>),
-    Map {
-        key: Box<Type>,
-        val: Box<Type>
-    },
-    TVar(u8),
-    Tuple(Vec<Type>),
+    Boolean,
+    Integer,
+    Bits,
+    String,
     Address,
     Contract,
     Oracle,
     OracleQuery,
     Channel,
-    Bits,
+    ContractBytearray,
+    TVar(u8),
     Bytes(BytesSize),
-    String,
+    List(Box<Type>),
+    Tuple(Vec<Type>),
     Variant(Vec<Type>),
-    ContractBytearray
+    Map {
+        key: Box<Type>,
+        val: Box<Type>
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

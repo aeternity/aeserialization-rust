@@ -30,7 +30,9 @@ fn serialize_int(n: &BigInt) -> Bytes {
 
 #[cfg(test)]
 mod test {
-    use super::value::Value;
+    use crate::data::datatype::BytesSize;
+
+    use super::{value::Value, datatype::Type};
     use num_bigint::{BigInt, Sign};
     use proptest::{prelude::*, arbitrary::Arbitrary};
 
@@ -44,6 +46,54 @@ mod test {
             )
     }
 
+    impl Arbitrary for BytesSize {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+        fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+            prop_oneof![
+                Just(BytesSize::Unsized),
+                any::<usize>().prop_map(BytesSize::Sized)
+            ].boxed()
+        }
+    }    
+
+    impl Arbitrary for Type {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+        fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
+            let leaf = prop_oneof![
+                Just(Type::Any),
+                Just(Type::Boolean),
+                Just(Type::Integer),
+                Just(Type::Bits),
+                Just(Type::String),
+                Just(Type::Address),
+                Just(Type::Contract),
+                Just(Type::Oracle),
+                Just(Type::OracleQuery),
+                Just(Type::Channel),
+                Just(Type::ContractBytearray),
+                any::<u8>().prop_map(Type::TVar),
+                any::<BytesSize>().prop_map(Type::Bytes),
+                //List(Box<Type>),
+                //Tuple(Vec<Type>),
+                //Variant(Vec<Type>),
+                //Map {
+                //    key: Box<Type>,
+                //    val: Box<Type>
+                //},
+            ];
+            leaf.prop_recursive(
+                3,
+                20,
+                10,
+                |inner| prop_oneof! {
+                    inner.prop_map(|x| Type::List(Box::new(x)))
+                }
+            ).boxed()
+        }
+    }
+
     impl Arbitrary for Value {
         type Parameters = ();
         type Strategy = BoxedStrategy<Self>;
@@ -55,7 +105,7 @@ mod test {
                 any::<Vec<u8>>().prop_map(Value::String),
                 any::<Vec<u8>>().prop_map(Value::Bytes),
                 any::<Vec<u8>>().prop_map(Value::ContractBytearray),
-                //any::<Type>().prop_map(Value::Typerep),
+                any::<Type>().prop_map(Value::Typerep),
             ].boxed()
             //leaf.prop_recursive(
             //    5,    // deep

@@ -269,6 +269,10 @@ impl Value {
                 let (val, rest) = Self::deserialize_many(size, &bytes[1..])?;
                 (List(val), rest)
             }
+            b if is_type_tag(b) => {
+                let (t, rest) = Type::deserialize(bytes)?;
+                (Typerep(t), rest)
+            }
             invalid => Err(DeserErr::InvalidIdByte(invalid))?
         };
 
