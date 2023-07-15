@@ -38,4 +38,6 @@ pub enum DeserErr {
     InvalidTypeObjectByte(u8),
     InvalidString,
     InvalidContractBytearray,
+    InvalidListSize,
+    InvalidTupleSize,
 }

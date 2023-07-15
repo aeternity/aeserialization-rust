@@ -99,7 +99,7 @@ mod test {
         type Parameters = ();
         type Strategy = BoxedStrategy<Self>;
         fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
-            prop_oneof![
+            let leaf = prop_oneof![
                 any::<bool>().prop_map(Value::Boolean),
                 arb_bigint().prop_map(Value::Integer),
                 arb_bigint().prop_map(Value::Bits),
@@ -107,16 +107,17 @@ mod test {
                 any::<Vec<u8>>().prop_map(Value::Bytes),
                 any::<Vec<u8>>().prop_map(Value::ContractBytearray),
                 any::<Type>().prop_map(Value::Typerep),
-            ].boxed()
-            //leaf.prop_recursive(
-            //    5,    // deep
-            //    256,  // max nodes
-            //    1000, // max items per collection
-            //    |inner| prop_oneof! {
-            //        prop::collection::vec(inner.clone(), 0..10000).prop_map(Value::List),
-            //        prop::collection::vec(inner, 0..10000).prop_map(Value::Tuple),
-            //    }
-            //).boxed()
+            ];
+            leaf.prop_recursive(
+                // TODO: recheck these args
+                5,
+                256,
+                100,
+                |inner| prop_oneof! {
+                    prop::collection::vec(inner.clone(), 0..100).prop_map(Value::List),
+                    prop::collection::vec(inner, 0..100).prop_map(Value::Tuple),
+                }
+            ).boxed()
         }
     }
 
