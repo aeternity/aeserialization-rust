@@ -75,20 +75,21 @@ mod test {
                 Just(Type::ContractBytearray),
                 any::<u8>().prop_map(Type::TVar),
                 any::<BytesSize>().prop_map(Type::Bytes),
-                //List(Box<Type>),
-                //Tuple(Vec<Type>),
-                //Variant(Vec<Type>),
+                // TODO: how to do this for map?
                 //Map {
                 //    key: Box<Type>,
                 //    val: Box<Type>
                 //},
             ];
             leaf.prop_recursive(
+                // TODO: recheck these args
                 3,
                 20,
                 10,
                 |inner| prop_oneof! {
-                    inner.prop_map(|x| Type::List(Box::new(x)))
+                    inner.clone().prop_map(|x| Type::List(Box::new(x))),
+                    prop::collection::vec(inner.clone(), 0..100).prop_map(Type::Tuple),
+                    prop::collection::vec(inner, 0..100).prop_map(Type::Variant),
                 }
             ).boxed()
         }
