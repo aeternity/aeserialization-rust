@@ -53,6 +53,26 @@ pub const TYPE_CONTRACT_BYTEARRAY: u8 = 0b10100111;
 pub const TYPE_VAR: u8 = 0b11100111;
 pub const TYPE_ANY: u8 = 0b11110111;
 
+pub fn is_small_pos_int(tag: u8) -> bool {
+    tag & 0b1000_0001 == ((POS_SIGN << 7) | SMALL_INT)
+}
+
+pub fn is_small_neg_int(tag: u8) -> bool {
+    tag & 0b1000_0001 == ((NEG_SIGN << 7) | SMALL_INT)
+}
+
+pub fn is_short_string(tag: u8) -> bool {
+    tag & 0b0000_0011 == SHORT_STRING
+}
+
+pub fn is_short_tuple(tag: u8) -> bool {
+    tag & 0b0000_1111 == SHORT_TUPLE
+}
+
+pub fn is_short_list(tag: u8) -> bool {
+    tag & 0b0000_1111 == SHORT_LIST
+}
+
 pub fn is_type_tag(tag: u8) -> bool {
     [TYPE_INTEGER, TYPE_BOOLEAN, TYPE_LIST, TYPE_TUPLE, TYPE_OBJECT,
     TYPE_BITS, TYPE_MAP, TYPE_STRING, TYPE_VARIANT, TYPE_BYTES,

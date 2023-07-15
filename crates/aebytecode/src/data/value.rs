@@ -269,25 +269,25 @@ impl Value {
                     };
                     (value, rest)
                 }
-            b if b & 0b1000_0001 == ((POS_SIGN << 7) | SMALL_INT) => {
-                let n = BigInt::from_bytes_be(Sign::Plus, &[(b & 0b0111_1110) >> 1]);
+            tag if is_small_pos_int(tag) => {
+                let n = BigInt::from_bytes_be(Sign::Plus, &[(tag & 0b0111_1110) >> 1]);
                 (Integer(n), &bytes[1..])
             }
-            b if b & 0b1000_0001 == ((NEG_SIGN << 7) | SMALL_INT) => {
-                let n = BigInt::from_bytes_be(Sign::Minus, &[(b & 0b0111_1110) >> 1]);
+            tag if is_small_neg_int(tag) => {
+                let n = BigInt::from_bytes_be(Sign::Minus, &[(tag & 0b0111_1110) >> 1]);
                 (Integer(n), &bytes[1..])
             }
-            b if b & 0b0000_0011 == SHORT_STRING => {
-                let size = (b >> 2) as usize;
+            tag if is_short_string(tag) => {
+                let size = (tag >> 2) as usize;
                 (String(bytes[1..size + 1].to_vec()), &bytes[size + 1..])
             }
-            b if b & 0b0000_1111 == SHORT_TUPLE => {
-                let size = (b >> 4) as usize;
+            tag if is_short_tuple(tag) => {
+                let size = (tag >> 4) as usize;
                 let (val, rest) = Self::deserialize_many(size, &bytes[1..])?;
                 (Tuple(val), rest)
             }
-            b if b & 0b0000_1111 == SHORT_LIST => {
-                let size = (b >> 4) as usize;
+            tag if is_short_list(tag)  => {
+                let size = (tag >> 4) as usize;
                 let (val, rest) = Self::deserialize_many(size, &bytes[1..])?;
                 (List(val), rest)
             }
