@@ -1,6 +1,5 @@
 /// Error type for aeser operations.
 #[derive(Debug, PartialEq)]
-#[derive(rustler::NifUnitEnum)]
 pub enum DecodingErr {
     /// Encoded id has an invalid size.
     InvalidIdSize,
@@ -26,6 +25,8 @@ pub enum DecodingErr {
     IncorrectSize,
     /// Failure in decoding payload of an object (eg. malformed base64).
     InvalidEncoding,
+    /// Checksum does not match.
+    InvalidCheck,
     /// Malformed contract code.
     InvalidCode,
 }

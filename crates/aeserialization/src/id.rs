@@ -14,7 +14,6 @@ pub const SERIALIZED_SIZE: usize = TAG_SIZE + PUB_SIZE;
 /// Denotes the type of an id.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, ToPrimitive, TS)]
 #[ts(export)]
-#[derive(rustler::NifTaggedEnum)]
 pub enum Tag {
     Account = 1,
     Name = 2,
@@ -71,59 +70,6 @@ impl FromRlpItem for Id {
             RlpItem::ByteArray(bytes) => {
                 Id::deserialize(bytes)
             }
-        }
-    }
-}
-
-mod erlang {
-    use rustler::*;
-    use crate::id::*;
-
-    impl Encoder for EncodedId {
-        fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
-            let mut bin = NewBinary::new(env, self.bytes.len());
-            bin.as_mut_slice().copy_from_slice(&self.bytes);
-            Binary::from(bin).to_term(env)
-        }
-    }
-
-    impl<'a> Decoder<'a> for EncodedId {
-        fn decode(term: Term<'a>) -> NifResult<EncodedId> {
-            let bin = term.decode_as_binary()?;
-            let bytes: &[u8; 32] = bin
-                .as_slice()
-                .try_into()
-                .map_err(|_| Error::BadArg)?;
-
-            Ok(EncodedId {bytes: *bytes})
-        }
-    }
-
-    impl Encoder for Id {
-        fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
-            (Atom::from_str(env, "id").unwrap(),
-             self.tag,
-             self.val
-            ).encode(env)
-        }
-    }
-
-    impl<'a> Decoder<'a> for Id {
-        fn decode(term: Term<'a>) -> NifResult<Id> {
-            let tup = types::tuple::get_tuple(term)?;
-
-            if tup.len() != 3 {
-                Err(Error::BadArg)?;
-            }
-
-            if tup[0].atom_to_string()? != "id" {
-                Err(Error::BadArg)?;
-            }
-
-            Ok(Id{
-                tag: tup[1].decode()?,
-                val: Decoder::decode(tup[2])?
-            })
         }
     }
 }

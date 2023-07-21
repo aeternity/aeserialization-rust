@@ -266,12 +266,6 @@ impl ToRlpItem for u32 {
     }
 }
 
-impl ToRlpItem for usize {
-    fn to_rlp_item(&self) -> RlpItem {
-        RlpItem::ByteArray(usize_to_min_be_bytes(*self))
-    }
-}
-
 impl ToRlpItem for bool {
     fn to_rlp_item(&self) -> RlpItem {
         RlpItem::ByteArray(vec![*self as u8])
@@ -347,72 +341,6 @@ impl<T: FromRlpItem> FromRlpItem for Vec<T> {
         let rlps = item.list()?;
 
         rlps.into_iter().map(|x| T::from_rlp_item(&x)).collect()
-    }
-}
-
-mod erlang {
-    use super::*;
-    use rustler::*;
-
-    fn make_bin<'a>(env: Env<'a>, data: &[u8]) -> Term<'a> {
-        let mut bin = NewBinary::new(env, data.len());
-        bin.as_mut_slice().copy_from_slice(data);
-        Term::from(bin)
-    }
-
-    impl Encoder for RlpItem {
-        fn encode<'a>(&self, env: Env<'a>) -> Term<'a> {
-            match self {
-                RlpItem::ByteArray(bytes) => make_bin(env, bytes),
-                RlpItem::List(rlps) => rlps.iter().rfold(Term::list_new_empty(env), |acc, el| {
-                    acc.list_prepend(el.encode(env))
-                }),
-            }
-        }
-    }
-
-    impl<'a> Decoder<'a> for RlpItem {
-        fn decode(term: Term) -> NifResult<RlpItem> {
-            if term.is_binary() {
-                Ok(RlpItem::ByteArray(
-                    term.decode_as_binary()?.as_slice().to_vec(),
-                ))
-            } else if term.is_list() {
-                let list: Vec<Term> = term.decode()?;
-                let rlps: NifResult<Vec<RlpItem>> = list.iter().map(|x| x.decode()).collect();
-                Ok(RlpItem::List(rlps?))
-            } else {
-                Err(Error::BadArg)
-            }
-        }
-    }
-
-    impl Encoder for DecodingErr {
-        fn encode<'a>(self: &DecodingErr, env: Env<'a>) -> Term<'a> {
-            match self {
-                DecodingErr::Trailing {
-                    input,
-                    undecoded,
-                    decoded,
-                } => {
-                    let header = Atom::from_str(env, "trailing").unwrap();
-                    (header, input, undecoded, decoded).encode(env)
-                }
-                DecodingErr::LeadingZerosInSize { position } => {
-                    let header = Atom::from_str(env, "leading_zeros_in_size").unwrap();
-                    (header, position).encode(env)
-                }
-                DecodingErr::SizeOverflow {
-                    position,
-                    expected,
-                    actual,
-                } => {
-                    let header = Atom::from_str(env, "size_overflow").unwrap();
-                    (header, position, expected, actual).encode(env)
-                }
-                DecodingErr::Empty => Atom::from_str(env, "empty").unwrap().encode(env),
-            }
-        }
     }
 }
 
