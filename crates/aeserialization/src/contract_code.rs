@@ -10,12 +10,12 @@ const CODE_TAG: u8 = 70;
 const VSN: u8 = 3;
 
 #[derive(Debug, PartialEq)]
-struct TypeInfo {
-    type_hash: Bytes,
-    name: Bytes,
-    payable: bool,
-    arg_type: Bytes,
-    out_type: Bytes,
+pub struct TypeInfo {
+    pub type_hash: Bytes,
+    pub name: Bytes,
+    pub payable: bool,
+    pub arg_type: Bytes,
+    pub out_type: Bytes,
 }
 
 impl ToRlpItem for TypeInfo {
