@@ -1,6 +1,5 @@
 /// Error type for aeser operations.
 #[derive(Debug, PartialEq)]
-#[derive(rustler::NifUnitEnum)]
 pub enum DecodingErr {
     /// Encoded id has an invalid size.
     InvalidIdSize,

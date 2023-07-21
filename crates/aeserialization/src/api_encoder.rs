@@ -4,7 +4,6 @@ use crate::Bytes;
 
 /// Possible chain-object types.
 #[derive(Debug, Copy, Clone, PartialEq)]
-#[derive(rustler::NifTaggedEnum)]
 pub enum KnownType {
     KeyBlockHash,
     MicroBlockHash,
