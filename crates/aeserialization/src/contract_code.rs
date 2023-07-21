@@ -4,10 +4,10 @@ use crate::Bytes;
 
 // TODO: this should come from another module which has not been rewritten yet
 /// Identifier tag of serialized contract code
-const CODE_TAG: u8 = 70;
+pub const CODE_TAG: u8 = 70;
 
 /// Contract format version.
-const VSN: u8 = 3;
+pub const VSN: u8 = 3;
 
 #[derive(Debug, PartialEq)]
 pub struct TypeInfo {
@@ -64,7 +64,7 @@ pub struct Code {
     /// checked before the contract is used.
     pub compiler_version: Bytes,
     /// AEVM residue. Kept for compatibility.
-    type_info: Vec<TypeInfo>,
+    pub type_info: Vec<TypeInfo>,
 }
 
 impl Code {
