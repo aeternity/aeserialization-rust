@@ -298,7 +298,7 @@ impl Value {
                         let (elems, new_rest) = Self::deserialize_many(size * 2, rest)?;
                         let mut map = BTreeMap::new();
                         for i in (0..elems.len()).step_by(2) {
-                            map.insert(elems[i], elems[i + 1]);
+                            map.insert(elems[i].clone(), elems[i + 1].clone());
                         }
                         (Map(map), new_rest)
                     }
