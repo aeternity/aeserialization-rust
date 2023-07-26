@@ -40,4 +40,9 @@ pub enum DeserErr {
     InvalidContractBytearray,
     InvalidListSize,
     InvalidTupleSize,
+    InvalidMapSize,
+    InvalidMapId,
+    TooLargeTagInVariant,
+    BadVariant,
+    TagDoesNotMatchTypeInVariant,
 }

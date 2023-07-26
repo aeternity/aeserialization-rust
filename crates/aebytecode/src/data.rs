@@ -107,6 +107,7 @@ mod test {
                 any::<Vec<u8>>().prop_map(Value::Bytes),
                 any::<Vec<u8>>().prop_map(Value::ContractBytearray),
                 any::<Type>().prop_map(Value::Typerep),
+                // TODO: add proptests for the remaining value types
             ];
             leaf.prop_recursive(
                 // TODO: recheck these args

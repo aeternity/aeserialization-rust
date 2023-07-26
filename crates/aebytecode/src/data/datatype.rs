@@ -8,7 +8,7 @@ use consts::*;
 use error::{SerErr, DeserErr};
 use value::Value;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     Any,
     Boolean,
@@ -32,7 +32,7 @@ pub enum Type {
     },
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BytesSize {
     Sized(usize),
     Unsized

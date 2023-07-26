@@ -1,3 +1,6 @@
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
+
 use num_bigint::{BigInt, Sign, BigUint};
 
 use aeser::rlp::{ToRlpItem, RlpItem, FromRlpItem};
@@ -9,7 +12,7 @@ use consts::*;
 use datatype::Type;
 use error::{SerErr, DeserErr};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Value {
     Boolean(bool),
     Integer(BigInt),
@@ -25,16 +28,35 @@ pub enum Value {
     Channel(Bytes),
     ContractBytearray(Bytes),
     Typerep(Type),
-    //Map(HashMap<Value, Value>),
-    //StoreMap { // TODO: check if these are the right types
-    //    cache: HashMap<Value, Value>,
-    //    id: u32
-    //},
+    Map(BTreeMap<Value, Value>),
+    StoreMap { // TODO: check if these are the right types
+        cache: BTreeMap<Value, Value>,
+        id: u32
+    },
     Variant {
         arities: Vec<u8>,
         tag: u8,
         values: Vec<Value>
     },
+}
+
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self.ordinal().cmp(&other.ordinal()) {
+            Ordering::Equal => None,
+            ordering => Some(ordering)
+        }
+    }
+}
+
+// TODO: implement total ordering
+impl Ord for Value {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.partial_cmp(other) {
+            Some(ordering) => ordering,
+            None => Ordering::Equal
+        }
+    }
 }
 
 impl Value {
@@ -89,37 +111,37 @@ impl Value {
                 res
             }
             Typerep(t) => t.serialize()?,
-            //Map(map) => {
-            //    let mut res = vec![MAP];
-            //    res.extend(map.len().to_rlp_item().serialize());
+            Map(map) => {
+                let mut res = vec![MAP];
+                res.extend(map.len().to_rlp_item().serialize());
 
-            //    if !map.is_empty() {
-            //        let some_key = map.keys().next().unwrap();
-            //        let some_val = map.values().next().unwrap();
-            //        if map.keys().any(|k| match k { Map(_) => true, _ => false }) {
-            //            Err(SerErr::MapAsKeyType)?
-            //        }
-            //        if !map.keys().all(|k| std::mem::discriminant(k) == std::mem::discriminant(some_key)) {
-            //            Err(SerErr::HeteroMapKeys)?
-            //        }
-            //        if !map.values().all(|v| std::mem::discriminant(v) == std::mem::discriminant(some_val)) {
-            //            Err(SerErr::HeteroMapValues)?
-            //        }
-            //    }
+                if !map.is_empty() {
+                    let some_key = map.keys().next().unwrap();
+                    let some_val = map.values().next().unwrap();
+                    if map.keys().any(|k| match k { Map(_) => true, _ => false }) {
+                        Err(SerErr::MapAsKeyType)?
+                    }
+                    if !map.keys().all(|k| std::mem::discriminant(k) == std::mem::discriminant(some_key)) {
+                        Err(SerErr::HeteroMapKeys)?
+                    }
+                    if !map.values().all(|v| std::mem::discriminant(v) == std::mem::discriminant(some_val)) {
+                        Err(SerErr::HeteroMapValues)?
+                    }
+                }
 
-            //    for (key, val) in map.into_iter() {
-            //        res.extend(key.serialize()?);
-            //        res.extend(val.serialize()?)
-            //    }
-            //    res
-            //}
-            //StoreMap{cache, id} => {
-            //    if cache.is_empty() {
-            //        [vec![MAP_ID], id.to_rlp_item().serialize()].concat()
-            //    } else {
-            //        Err(SerErr::NonEmptyStoreMapCache)?
-            //    }
-            //}
+                for (key, val) in map.into_iter() {
+                    res.extend(key.serialize()?);
+                    res.extend(val.serialize()?)
+                }
+                res
+            }
+            StoreMap{cache, id} => {
+                if cache.is_empty() {
+                    [vec![MAP_ID], id.to_rlp_item().serialize()].concat()
+                } else {
+                    Err(SerErr::NonEmptyStoreMapCache)?
+                }
+            }
             Variant{arities, tag, values} => {
                 if (*tag as usize) < arities.len() {
                     let arity = arities[*tag as usize] as usize;
@@ -269,6 +291,49 @@ impl Value {
                     };
                     (value, rest)
                 }
+            MAP => {
+                let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
+                match BigUint::from_bytes_be(&decoded).to_usize() {
+                    Some(size) => {
+                        let (elems, new_rest) = Self::deserialize_many(size * 2, rest)?;
+                        let mut map = BTreeMap::new();
+                        for i in (0..elems.len()).step_by(2) {
+                            map.insert(elems[i], elems[i + 1]);
+                        }
+                        (Map(map), new_rest)
+                    }
+                    None => Err(DeserErr::InvalidMapSize)?
+                }
+            }
+            MAP_ID => {
+                let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
+                match BigUint::from_bytes_be(&decoded).to_u32() {
+                    Some(id) => (StoreMap { cache: BTreeMap::new(), id }, rest),
+                    None => Err(DeserErr::InvalidMapId)?
+                }
+            }
+            VARIANT => {
+                let (arities, tag, rest) = {
+                    let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
+                    (decoded, rest[0], &rest[1..])
+                };
+
+                if tag as usize > arities.len() {
+                    Err(DeserErr::TooLargeTagInVariant)?
+                } else {
+                    match Self::try_deserialize(rest)? {
+                        (Tuple(elems), new_rest) => {
+                            let arity = arities[tag as usize];
+                            if arity as usize == elems.len() {
+                                (Variant { arities, tag, values: elems }, new_rest)
+                            } else {
+                                Err(DeserErr::TagDoesNotMatchTypeInVariant)?
+                            }
+                        }
+                        _ => Err(DeserErr::BadVariant)?
+                    }
+                }
+            }
             tag if is_small_pos_int(tag) => {
                 let n = BigInt::from_bytes_be(Sign::Plus, &[(tag & 0b0111_1110) >> 1]);
                 (Integer(n), &bytes[1..])
@@ -309,6 +374,30 @@ impl Value {
             elems.push(deser.0);
         }
         Ok((elems, bytes))
+    }
+
+    fn ordinal(&self) -> usize {
+        use Value::*;
+
+        match self {
+            Integer(_) => 0,
+            Boolean(_) => 1,
+            Address(_) => 2,
+            Channel(_) => 3,
+            Contract(_) => 4,
+            Oracle(_) => 5,
+            Bytes(_) => 6,
+            Bits(_) => 7,
+            String(_) => 8,
+            Tuple(_) => 9,
+            Map(_) => 10,
+            List(_) => 11,
+            Variant{..} => 12,
+            OracleQuery(_) => 13,
+            ContractBytearray(_) => 14,
+            Typerep(_) => 15, // TODO: is this correct? it's not mentioned in erlang
+            StoreMap{..} => 16, // TODO: is this correct? it's not mentioned in erlang
+        }
     }
 }
 
