@@ -395,8 +395,9 @@ impl Value {
             Variant{..} => 12,
             OracleQuery(_) => 13,
             ContractBytearray(_) => 14,
-            Typerep(_) => 15, // TODO: is this correct? it's not mentioned in erlang
-            StoreMap{..} => 16, // TODO: is this correct? it's not mentioned in erlang
+            // TODO: Set the ordinal for the following types
+            Typerep(_) => panic!("Typerep should not be compared"),
+            StoreMap{..} => panic!("Storemap should not be compared"),
         }
     }
 }
