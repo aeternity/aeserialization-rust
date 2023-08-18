@@ -17,3 +17,6 @@ settings.json
 proptest-regressions/
 
 .idea/
+
+# Auto-generated code
+crates/aebytecode/src/fate_ops.rs
