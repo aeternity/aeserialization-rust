@@ -1,6 +1,6 @@
 pub mod consts;
 pub mod error;
-pub mod datatype;
+pub mod types;
 pub mod value;
 
 use num_bigint::BigInt;
@@ -30,9 +30,9 @@ fn serialize_int(n: &BigInt) -> Bytes {
 
 #[cfg(test)]
 mod test {
-    use crate::data::datatype::BytesSize;
+    use crate::data::types::BytesSize;
 
-    use super::{value::Value, datatype::Type};
+    use super::{value::Value, types::Type};
     use num_bigint::{BigInt, Sign};
     use proptest::{prelude::*, arbitrary::Arbitrary};
 

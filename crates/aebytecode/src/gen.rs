@@ -2,7 +2,7 @@ use std::{fmt, iter};
 
 use serde::{Deserialize, de::{self, Visitor, MapAccess}, Deserializer};
 
-use crate::data::datatype;
+use crate::data::types;
 
 #[derive(Debug, Deserialize)]
 struct Instructions {
@@ -19,8 +19,8 @@ struct Instruction {
     gas: Gas,
     format: Vec<String>,
     constructor: String,
-    arg_types: Vec<datatype::Type>,
-    res_type: datatype::Type,
+    arg_types: Vec<types::Type>,
+    res_type: types::Type,
     documentation: String,
 }
 

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{data::datatype, fate_op};
+use crate::{data::types, fate_op};
 
 /// The result of calling [`symbol_identifier`] on "init". This is written as a constants in order
 /// to avoid repetitive calls to the blake2 hash function.
@@ -16,8 +16,8 @@ pub enum Attribute {
 pub struct Function {
     name: String,
     attributes: Vec<Attribute>,
-    arg_types: Vec<datatype::Type>,
-    return_type: datatype::Type,
+    arg_types: Vec<types::Type>,
+    return_type: types::Type,
     code: BasicBlocks
 }
 

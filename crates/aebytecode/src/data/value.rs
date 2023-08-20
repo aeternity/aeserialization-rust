@@ -9,7 +9,7 @@ use num_traits::{ToPrimitive, Zero};
 
 use super::*;
 use consts::*;
-use datatype::Type;
+use types::Type;
 use error::{SerErr, DeserErr};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
