@@ -2,7 +2,7 @@ use std::{fmt, iter};
 
 use serde::{Deserialize, de::{self, Visitor, MapAccess}, Deserializer};
 
-use crate::data::{datatype};
+use crate::data::datatype;
 
 #[derive(Debug, Deserialize)]
 struct Instructions {
@@ -104,7 +104,7 @@ pub fn generate_fate_op_enum() -> std::io::Result<()> {
         }
     }
     file += "}\n";
-    std::fs::write("src/fate_ops.rs", file)
+    std::fs::write("src/fate_op.rs", file)
 }
 
 #[cfg(test)]
