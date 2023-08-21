@@ -35,77 +35,6 @@ pub enum Type {
     },
 }
 
-impl<'de> Deserialize<'de> for Type {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct TypeVisitor;
-
-        impl<'de> Visitor<'de> for TypeVisitor {
-            type Value = Type;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("struct Type")
-            }
-
-            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                where
-                    E: de::Error,
-            {
-                match v {
-                    "any" => Ok(Type::Any),
-                    "bool" => Ok(Type::Boolean),
-                    "boolean" => Ok(Type::Boolean), // Same as bool
-                    "int" => Ok(Type::Integer),
-                    "integer" => Ok(Type::Integer),  // Same as int
-                    "bits" => Ok(Type::Bits),
-                    "string" => Ok(Type::String),
-                    "address" => Ok(Type::Address),
-                    "contract" => Ok(Type::Contract),
-                    "contract_bytearray" => Ok(Type::ContractBytearray),
-                    "oracle" => Ok(Type::Oracle),
-                    "oracle_query" => Ok(Type::OracleQuery),
-                    "bytes" => Ok(Type::Bytes(BytesSize::Unsized)), // CHECK
-                    "none" => Ok(Type::Tuple(vec![])), // CHECK
-                    "typerep" => Ok(Type::Any), // NOT CORRECT
-                    "variant" => Ok(Type::Any), // NOT CORRECT
-                    "hash" => Ok(Type::Any), // NOT CORRECT
-                    "signature" => Ok(Type::Any), // NOT CORRECT
-                    "tuple" => Ok(Type::Any), // NOT CORRECT
-                    "list" => Ok(Type::Any), // NOT CORRECT
-                    "map" => Ok(Type::Any), // NOT CORRECT
-                    "char" => Ok(Type::Any), // NOT CORRECT
-                    t => Err(de::Error::custom(format!("unknown type {t}")))
-                }
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-                where
-                    A: de::SeqAccess<'de>,
-            {
-                let t = seq.next_element::<String>()?
-                    .ok_or_else(|| de::Error::custom("error"))?;
-                match t.as_str() {
-                    "list" => {
-                        let arg_type = seq.next_element::<Type>()?
-                            .ok_or_else(|| de::Error::custom("error"))?;
-                        Ok(Type::List(Box::new(arg_type)))
-                    }
-                    "tuple" => {
-                        let arg_types = seq.next_element::<Vec<Type>>()?
-                            .ok_or_else(|| de::Error::custom("error"))?;
-                        Ok(Type::Tuple(arg_types))
-                    }
-                    t => Err(de::Error::custom(format!("unknown list {t}"))),
-                }
-            }
-        }
-
-        deserializer.deserialize_any(TypeVisitor)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BytesSize {
     Sized(usize),
@@ -259,5 +188,76 @@ impl Type {
         }
 
         Ok((types, rest))
+    }
+}
+
+impl<'de> Deserialize<'de> for Type {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct TypeVisitor;
+
+        impl<'de> Visitor<'de> for TypeVisitor {
+            type Value = Type;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct Type")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                where
+                    E: de::Error,
+            {
+                match v {
+                    "any" => Ok(Type::Any),
+                    "bool" => Ok(Type::Boolean),
+                    "boolean" => Ok(Type::Boolean), // Same as bool
+                    "int" => Ok(Type::Integer),
+                    "integer" => Ok(Type::Integer),  // Same as int
+                    "bits" => Ok(Type::Bits),
+                    "string" => Ok(Type::String),
+                    "address" => Ok(Type::Address),
+                    "contract" => Ok(Type::Contract),
+                    "contract_bytearray" => Ok(Type::ContractBytearray),
+                    "oracle" => Ok(Type::Oracle),
+                    "oracle_query" => Ok(Type::OracleQuery),
+                    "bytes" => Ok(Type::Bytes(BytesSize::Unsized)), // CHECK
+                    "none" => Ok(Type::Tuple(vec![])), // CHECK
+                    "typerep" => Ok(Type::Any), // NOT CORRECT
+                    "variant" => Ok(Type::Any), // NOT CORRECT
+                    "hash" => Ok(Type::Any), // NOT CORRECT
+                    "signature" => Ok(Type::Any), // NOT CORRECT
+                    "tuple" => Ok(Type::Any), // NOT CORRECT
+                    "list" => Ok(Type::Any), // NOT CORRECT
+                    "map" => Ok(Type::Any), // NOT CORRECT
+                    "char" => Ok(Type::Any), // NOT CORRECT
+                    t => Err(de::Error::custom(format!("unknown type {t}")))
+                }
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+                where
+                    A: de::SeqAccess<'de>,
+            {
+                let t = seq.next_element::<String>()?
+                    .ok_or_else(|| de::Error::custom("error"))?;
+                match t.as_str() {
+                    "list" => {
+                        let arg_type = seq.next_element::<Type>()?
+                            .ok_or_else(|| de::Error::custom("error"))?;
+                        Ok(Type::List(Box::new(arg_type)))
+                    }
+                    "tuple" => {
+                        let arg_types = seq.next_element::<Vec<Type>>()?
+                            .ok_or_else(|| de::Error::custom("error"))?;
+                        Ok(Type::Tuple(arg_types))
+                    }
+                    t => Err(de::Error::custom(format!("unknown list {t}"))),
+                }
+            }
+        }
+
+        deserializer.deserialize_any(TypeVisitor)
     }
 }
