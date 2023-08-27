@@ -45,4 +45,5 @@ pub enum DeserErr {
     TooLargeTagInVariant,
     BadVariant,
     TagDoesNotMatchTypeInVariant,
+    CalldataDecodeErr,
 }
