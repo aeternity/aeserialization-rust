@@ -2,16 +2,19 @@ use aeser::Bytes;
 
 use crate::{data::{value::Value, error::{SerErr, DeserErr}}, code};
 
+/// Return the current ABI version.
 pub fn abi_version() -> u32 {
     3
 }
 
+/// Encode the calldata given the function name and the list of arguments.
 pub fn create_calldata(fun_name: &String, args: Vec<Value>) -> Result<Bytes, SerErr> {
     let fun_id = code::symbol_identifier(fun_name);
     let fun_id_val = Value::Bytes(fun_id.to_be_bytes().to_vec());
     Value::Tuple(vec![fun_id_val, Value::Tuple(args)]).serialize()
 }
 
+/// Decode the calldata into a list of args given the function name and encoded calldata.
 pub fn decode_calldata(fun_name: &String, calldata: Bytes) -> Result<Vec<Value>, DeserErr> {
     let fun_id = code::symbol_identifier(fun_name);
     let fun_id_val = Value::Bytes(fun_id.to_be_bytes().to_vec());
