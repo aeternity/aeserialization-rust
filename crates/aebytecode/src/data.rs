@@ -30,10 +30,14 @@ fn serialize_int(n: &BigInt) -> Bytes {
 
 #[cfg(test)]
 mod test {
+    use std::{vec, collections::BTreeMap};
+
     use crate::data::types::BytesSize;
 
     use super::{value::Value, types::Type};
-    use num_bigint::{BigInt, Sign};
+    use aeser::{Bytes, rlp::ToRlpItem};
+    use num_bigint::{BigInt, Sign, BigUint};
+    use num_traits::{FromPrimitive, ToPrimitive};
     use proptest::{prelude::*, arbitrary::Arbitrary};
 
     fn arb_bigint() -> impl Strategy<Value = BigInt> {
@@ -129,5 +133,182 @@ mod test {
             let deser = Value::deserialize(&ser.unwrap());
             prop_assert_eq!(deser.unwrap(), value);
         }
+
+        #[test]
+        fn value_serialization_props(value: Value) {
+            use Value::*;
+
+            let ser = value.serialize().unwrap();
+
+            match value {
+                Boolean(v) => test_boolean_props(ser, v),
+                Integer(n) => test_integer_props(ser, n),
+                String(s) => test_string_props(ser, s),
+                Bits(bs) => test_bits_props(ser, bs),
+                Bytes(bs) => test_bytes_props(ser, bs),
+                Address(a) => test_address_props(ser, a),
+                Contract(a) => test_contract_props(ser, a),
+                Oracle(a) => test_oracle_props(ser, a),
+                OracleQuery(a) => test_oracle_query_props(ser, a),
+                Channel(a) => test_channel_props(ser, a),
+                ContractBytearray(c) => test_contract_bytearray_props(ser, c),
+                Tuple(elems) => test_tuple_props(ser, elems),
+                List(elems) => test_list_props(ser, elems),
+                Map(map) => test_map_props(ser, map),
+                StoreMap {id, cache: _} => test_store_map_props(ser, id),
+                Variant {arities, tag, values} => test_variant_props(ser, arities, tag, values),
+                Typerep(t) => test_typerep_props(ser, t),
+            }
+        }
+    }
+
+    fn test_boolean_props(ser: Bytes, b: bool) {
+        match b {
+            true =>
+                assert_eq!(ser, vec![0b1111_1111]),
+            false =>
+                assert_eq!(ser, vec![0b0111_1111]),
+        }
+    }
+
+    fn test_integer_props(ser: Bytes, n: BigInt) {
+        if n.magnitude() < &BigUint::from(64u32) {
+            let int = n.to_u8().unwrap();
+            match n.sign() {
+                Sign::NoSign | Sign::Plus =>
+                    assert_eq!(ser, vec![int << 1]),
+                Sign::Minus =>
+                    assert_eq!(ser, vec![0b1000_0000 | (int << 1)]),
+            }
+        } else {
+            let rlp_n = (n.magnitude() - BigUint::from(64u32)).to_bytes_be().to_rlp_item().serialize();
+            match n.sign() {
+                Sign::NoSign | Sign::Plus =>
+                    assert_eq!(ser, [vec![0b0110_1111], rlp_n].concat()),
+                Sign::Minus =>
+                    assert_eq!(ser, [vec![0b1110_1111], rlp_n].concat()),
+            }
+        }
+    }
+
+    fn test_string_props(ser: Bytes, str: Bytes) {
+        if str.len() == 0 {
+            assert_eq!(ser, vec![0b0101_1111]);
+        } else if str.len() < 64 {
+            let len_byte = str.len() as u8;
+            assert_eq!(ser, [vec![(len_byte << 2) | 0b0000_0001], str.to_vec()].concat());
+        } else {
+            let len_bigint = BigInt::from_usize(str.len() - 64).unwrap();
+            let len_bytes = Value::Integer(len_bigint).serialize().unwrap();
+            assert_eq!(ser, [vec![0b0000_0001], len_bytes, str].concat());
+        }
+    }
+
+    fn test_bits_props(ser: Bytes, n: BigInt) {
+        let rlp_n = n.magnitude().to_bytes_be().to_rlp_item().serialize();
+        match n.sign() {
+            Sign::NoSign | Sign::Plus =>
+                assert_eq!(ser, [vec![0b0100_1111], rlp_n].concat()),
+            Sign::Minus =>
+                assert_eq!(ser, [vec![0b1100_1111], rlp_n].concat()),
+        }
+    }
+
+    fn test_bytes_props(ser: Bytes, bytes: Bytes) {
+        let bytes_as_string_ser = Value::String(bytes).serialize().unwrap();
+        assert_eq!(ser, [vec![0b1001_1111, 0b0000_0001], bytes_as_string_ser].concat());
+    }
+
+    fn test_address_props(ser: Bytes, address: Bytes) {
+        let rlp = address.to_rlp_item().serialize();
+        assert_eq!(ser, [vec![0b1001_1111, 0b0000_0000], rlp].concat());
+    }
+
+    fn test_contract_props(ser: Bytes, address: Bytes) {
+        let rlp = address.to_rlp_item().serialize();
+        assert_eq!(ser, [vec![0b1001_1111, 0b0000_0010], rlp].concat());
+    }
+
+    fn test_oracle_props(ser: Bytes, address: Bytes) {
+        let rlp = address.to_rlp_item().serialize();
+        assert_eq!(ser, [vec![0b1001_1111, 0b0000_0011], rlp].concat());
+    }
+
+    fn test_oracle_query_props(ser: Bytes, address: Bytes) {
+        let rlp = address.to_rlp_item().serialize();
+        assert_eq!(ser, [vec![0b1001_1111, 0b0000_0100], rlp].concat());
+    }
+
+    fn test_channel_props(ser: Bytes, address: Bytes) {
+        let rlp = address.to_rlp_item().serialize();
+        assert_eq!(ser, [vec![0b1001_1111, 0b0000_0101], rlp].concat());
+    }
+
+    fn test_contract_bytearray_props(ser: Bytes, contract: Bytes) {
+        let len_bytes = Value::Integer(BigInt::from(contract.len())).serialize().unwrap();
+        assert_eq!(ser, [vec![0b1000_1111], len_bytes, contract].concat());
+    }
+
+    fn test_tuple_props(ser: Bytes, elems: Vec<Value>) {
+        if elems.len() == 0 {
+            assert_eq!(ser, vec![0b0011_1111]);
+        } else if elems.len() < 16 {
+            let len_byte = elems.len() as u8;
+            let mut ser_elems = Vec::new();
+            for elem in elems {
+                ser_elems.extend(elem.serialize().unwrap());
+            }
+            assert_eq!(ser, [vec![(len_byte << 4) | 0b0000_1011], ser_elems].concat())
+        } else {
+            let len_bytes = (elems.len() - 16).to_rlp_item().serialize();
+            let mut ser_elems = Vec::new();
+            for elem in elems {
+                ser_elems.extend(elem.serialize().unwrap());
+            }
+            assert_eq!(ser, [vec![0b0000_1011], len_bytes, ser_elems].concat())
+        }
+    }
+
+    fn test_list_props(ser: Bytes, elems: Vec<Value>) {
+        if elems.len() < 16 {
+            let len_byte = elems.len() as u8;
+            let mut ser_elems = Vec::new();
+            for elem in elems {
+                ser_elems.extend(elem.serialize().unwrap());
+            }
+            assert_eq!(ser, [vec![(len_byte << 4) | 0b0000_0011], ser_elems].concat())
+        } else {
+            let len_bytes = (elems.len() - 16).to_rlp_item().serialize();
+            let mut ser_elems = Vec::new();
+            for elem in elems {
+                ser_elems.extend(elem.serialize().unwrap());
+            }
+            assert_eq!(ser, [vec![0b0001_1111], len_bytes, ser_elems].concat())
+        }
+    }
+
+    fn test_map_props(ser: Bytes, map: BTreeMap<Value, Value>) {
+        let len_bytes = map.len().to_rlp_item().serialize();
+        let mut ser_elems = Vec::new();
+        for (key, val) in map.into_iter() {
+            ser_elems.extend(key.serialize().unwrap());
+            ser_elems.extend(val.serialize().unwrap())
+        }
+        assert_eq!(ser, [vec![0b0010_1111], len_bytes, ser_elems].concat());
+    }
+
+    fn test_store_map_props(ser: Bytes, id: u32) {
+        let id_bytes = Value::Integer(BigInt::from_u32(id).unwrap()).serialize().unwrap();
+        assert_eq!(ser, [vec![0b1011_1111], id_bytes].concat());
+    }
+
+    fn test_variant_props(ser: Bytes, arities: Vec<u8>, tag: u8, elems: Vec<Value>) {
+        let rlp_arities = arities.to_rlp_item().serialize();
+        let ser_elems = Value::Tuple(elems).serialize().unwrap();
+        assert_eq!(ser, [vec![0b1010_1111], rlp_arities, vec![tag], ser_elems].concat());
+    }
+
+    fn test_typerep_props(_ser: Bytes, _t: Type) {
+        // TODO: implement
     }
 }
