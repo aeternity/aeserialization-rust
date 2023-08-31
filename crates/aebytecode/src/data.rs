@@ -1,7 +1,7 @@
-pub mod consts;
 pub mod error;
 pub mod types;
 pub mod value;
+mod consts;
 
 use num_bigint::BigInt;
 use num_traits::Signed;
