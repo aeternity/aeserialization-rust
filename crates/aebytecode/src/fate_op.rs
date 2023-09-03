@@ -1,5 +1,12 @@
 use crate::code2::Arg;
 
+pub enum AddressingMode {
+    Short(u8),
+    Long {
+        high: u8,
+        low: u8,
+    }
+}
 #[derive(Debug)]
 pub enum FateOp {
     RETURN,
@@ -584,5 +591,45 @@ impl FateOp {
             EXIT(a1) => crate::code2::Arguments { args: vec![a1.clone()] },
             NOP => crate::code2::Arguments { args: vec![] },
         }
+    }
+
+    pub fn addressing_mode(&self) -> AddressingMode {
+        let args = self.args().args;
+        let padded_args = match args.len() {
+            0 => args,
+            1..=4 => [[0].repeat(4 - args.len()).iter().map(|z| Arg::Stack(0)).collect(), args].concat(),
+            5..=8 => [[0].repeat(8 - args.len()).iter().map(|z| Arg::Stack(0)).collect(), args].concat(),
+            _ => panic!("Args length should be less than or equal to 8"),
+        };
+        if padded_args.len() == 4 {
+            let mut m1: u8 = 0;
+            for i in 0..4 {
+                m1 <<= 2;
+                m1 |= modifier_bits(&padded_args[i]);
+            }
+            AddressingMode::Short(m1)
+        } else if padded_args.len() == 8 {
+            let mut m1: u8 = 0;
+            for i in 0..4 {
+                m1 <<= 2;
+                m1 |= modifier_bits(&padded_args[i]);
+            }
+            let mut m2: u8 = 0;
+            for i in 4..8 {
+                m2 <<= 2;
+                m2 |= modifier_bits(&padded_args[i]);
+            }
+            AddressingMode::Long { low: m1, high: m2 }
+        } else {
+            panic!("Args were not padded correctly")
+        }
+    }
+}
+fn modifier_bits(arg: &crate::code2::Arg) -> u8 {
+    match arg {
+        Arg::Stack(_) => 0b00,
+        Arg::Arg(_) => 0b01,
+        Arg::Var(_) => 0b10,
+        Arg::Immediate(_) => 0b11,
     }
 }

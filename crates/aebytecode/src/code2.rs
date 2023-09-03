@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, vec};
 
 use aeser::Bytes;
 
-use crate::{data::{types::Type, value::Value}, fate_op::FateOp};
+use crate::{data::{types::Type, value::Value}, fate_op::{FateOp, AddressingMode}};
 
 trait Serializable {
     fn serialize(&self) -> Bytes {
@@ -22,6 +22,7 @@ impl Serializable for Instructions {}
 impl Serializable for FateOp {}
 impl Serializable for Arguments {}
 impl Serializable for Arg {}
+impl Serializable for AddressingMode {}
 
 #[derive(Debug)]
 struct Contract {
@@ -350,7 +351,7 @@ mod test {
         fn test_instruction_serialization_props(instruction: FateOp) {
             let ser_instruction = [
                 vec![instruction.opcode()],
-                //addressing_mode(instruction),
+                instruction.addressing_mode().serialize(),
                 instruction.args().serialize(),
             ].concat();
             prop_assert_eq!(instruction.serialize(), ser_instruction);
