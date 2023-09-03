@@ -99,6 +99,7 @@ mod test {
     use super::*;
     use aeser::rlp::ToRlpItem;
     use proptest::prelude::*;
+    use num_bigint::BigInt;
 
     fn arb_function() -> impl Strategy<Value = Function> {
         any::<u32>()
@@ -151,6 +152,13 @@ mod test {
                 Arguments {
                     args: vec![]
                 }
+            )
+    }
+
+    fn arb_arg() -> impl Strategy<Value = Arg> {
+        any::<u32>()
+            .prop_map(|_x|
+                Arg::Stack(0)
             )
     }
 
@@ -271,6 +279,15 @@ mod test {
         }
     }
 
+    impl Arbitrary for Arg {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+
+        fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
+            arb_arg().boxed()
+        }
+    }
+
     impl Arbitrary for FateOp {
         type Parameters = ();
         type Strategy = BoxedStrategy<Self>;
@@ -358,12 +375,23 @@ mod test {
         }
 
         #[test]
-        fn test_argument_serialization_props(arguments: Arguments) {
+        fn test_arguments_serialization_props(arguments: Arguments) {
             let mut ser_arguments = Vec::new();
             for arg in &arguments.args {
                 ser_arguments.extend(arg.serialize());
             }
             prop_assert_eq!(arguments.serialize(), ser_arguments);
+        }
+
+        #[test]
+        fn test_argument_serialization_props(arg: Arg) {
+            let ser_arg = match &arg {
+                Arg::Stack(n) | Arg::Arg(n) | Arg::Var(n) =>
+                    Value::Integer(BigInt::from(*n)).serialize(),
+                Arg::Immediate(d) =>
+                    d.serialize(),
+            };
+            prop_assert_eq!(arg.serialize(), ser_arg.unwrap());
         }
     }
 
