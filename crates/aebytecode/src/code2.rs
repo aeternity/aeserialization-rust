@@ -1,12 +1,13 @@
 use std::{collections::BTreeMap, vec};
 
 use aeser::Bytes;
+use num_bigint::BigInt;
 
-use crate::{data::{types::Type, value::Value}, instruction::{Instruction, AddressingMode}};
+use crate::{data::{types::Type, value::Value, error::SerErr}, instruction::{Instruction, AddressingMode}};
 
 trait Serializable {
-    fn serialize(&self) -> Bytes {
-        vec![]
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        Ok(vec![])
     }
 }
 
@@ -15,22 +16,78 @@ impl Serializable for Code {}
 impl Serializable for Symbols {}
 impl Serializable for Annotations {}
 impl Serializable for Id {
-    fn serialize(&self) -> Bytes {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
         use blake2::{digest::consts::U32, Blake2b, Digest};
         type Blake2b32 = Blake2b<U32>;
         let mut hasher = Blake2b32::new();
         hasher.update(self.name.as_str());
-        hasher.finalize()[0..4].to_vec()
+        Ok(hasher.finalize()[0..4].to_vec())
     }
 }
-impl Serializable for Function {}
+impl Serializable for Function {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        let ser = [
+            vec![0xfe],
+            self.id.serialize()?,
+            self.attributes.serialize()?,
+            self.type_sig.serialize()?,
+            self.instructions.serialize()?,
+        ].concat();
+        Ok(ser)
+    }
+}
 impl Serializable for Attributes {}
-impl Serializable for TypeSig {}
-impl Serializable for Instruction {}
-impl Serializable for Vec<Instruction> {}
-impl Serializable for Arg {}
-impl Serializable for Vec<Arg> {}
-impl Serializable for AddressingMode {}
+impl Serializable for TypeSig {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        Ok([Type::Tuple(self.args.clone()).serialize()?, self.ret.serialize()?].concat())
+    }
+}
+impl Serializable for Instruction {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        let ser = [
+            vec![self.opcode()],
+            self.addressing_mode().serialize()?,
+            self.args().serialize()?,
+        ].concat();
+        Ok(ser)
+    }
+}
+impl Serializable for Vec<Instruction> {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        let mut ser = Vec::new();
+        for instr in self {
+            ser.extend(instr.serialize()?);
+        }
+        Ok(ser)
+    }
+}
+impl Serializable for Arg {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        match self {
+            Arg::Stack(n) | Arg::Arg(n) | Arg::Var(n) =>
+                Value::Integer(BigInt::from(*n)).serialize(),
+            Arg::Immediate(v) =>
+                v.serialize(),
+        }
+    }
+}
+impl Serializable for Vec<Arg> {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        let mut ser = Vec::new();
+        for arg in self {
+            ser.extend(arg.serialize()?)
+        }
+        Ok(ser)
+    }
+}
+impl Serializable for AddressingMode {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        match self {
+            Self::Short(low) => Ok(vec![*low]),
+            Self::Long { high, low } => Ok(vec![*low, *high]),
+        }
+    }
+}
 
 #[derive(Debug)]
 struct Contract {
@@ -262,10 +319,10 @@ mod test {
     proptest! {
         #[test]
         fn test_contract_serialization_props(c: Contract) {
-            let rlp_code = c.code.serialize().to_rlp_item().serialize();
-            let rlp_symbols = c.symbols.serialize().to_rlp_item().serialize();
-            let rlp_annotations = c.annotations.serialize().to_rlp_item().serialize();
-            prop_assert_eq!(c.serialize(), [rlp_code, rlp_symbols, rlp_annotations].concat());
+            let rlp_code = c.code.serialize().unwrap().to_rlp_item().serialize();
+            let rlp_symbols = c.symbols.serialize().unwrap().to_rlp_item().serialize();
+            let rlp_annotations = c.annotations.serialize().unwrap().to_rlp_item().serialize();
+            prop_assert_eq!(c.serialize().unwrap(), [rlp_code, rlp_symbols, rlp_annotations].concat());
         }
 
         #[test]
@@ -274,26 +331,26 @@ mod test {
             let names: Vec<u32> = c.functions.keys().cloned().collect();
             prop_assert!(names.windows(2).all(|w| w[0] <= w[1]));
             for fun in c.functions.values() {
-                ser_funs.extend(fun.serialize());
+                ser_funs.extend(fun.serialize().unwrap());
             }
-            prop_assert_eq!(c.serialize(), ser_funs);
+            prop_assert_eq!(c.serialize().unwrap(), ser_funs);
         }
 
         #[test]
         fn test_function_serialization_props(f: Function) {
             let ser_fun = [
                 vec![0xfe],
-                f.id.serialize(),
-                f.attributes.serialize(),
-                f.type_sig.serialize(),
-                f.instructions.serialize(),
+                f.id.serialize().unwrap(),
+                f.attributes.serialize().unwrap(),
+                f.type_sig.serialize().unwrap(),
+                f.instructions.serialize().unwrap(),
             ].concat();
-            prop_assert_eq!(f.serialize(), ser_fun);
+            prop_assert_eq!(f.serialize().unwrap(), ser_fun);
         }
 
         #[test]
         fn test_id_serialization_props(id: Id) {
-            prop_assert_eq!(id.serialize().len(), 4);
+            prop_assert_eq!(id.serialize().unwrap().len(), 4);
         }
 
         #[test]
@@ -305,7 +362,7 @@ mod test {
             if attrs.attrs.contains(&Attribute::Payable) {
                 total += 2;
             }
-            prop_assert_eq!(attrs.serialize(), vec![total]);
+            prop_assert_eq!(attrs.serialize().unwrap(), vec![total]);
         }
 
         #[test]
@@ -314,35 +371,35 @@ mod test {
                 Type::Tuple(type_sig.args.to_vec()).serialize().unwrap(),
                 type_sig.ret.serialize().unwrap(),
             ].concat();
-            prop_assert_eq!(type_sig.serialize(), ser_sig);
+            prop_assert_eq!(type_sig.serialize().unwrap(), ser_sig);
         }
 
         #[test]
         fn test_instructions_serialization_props(instructions: Vec<Instruction>) {
             let mut ser_instructions = Vec::new();
             for op in &instructions {
-                ser_instructions.extend(op.serialize());
+                ser_instructions.extend(op.serialize().unwrap());
             }
-            prop_assert_eq!(instructions.serialize(), ser_instructions);
+            prop_assert_eq!(instructions.serialize().unwrap(), ser_instructions);
         }
 
         #[test]
         fn test_instruction_serialization_props(instruction: Instruction) {
             let ser_instruction = [
                 vec![instruction.opcode()],
-                instruction.addressing_mode().serialize(),
-                instruction.args().serialize(),
+                instruction.addressing_mode().serialize().unwrap(),
+                instruction.args().serialize().unwrap(),
             ].concat();
-            prop_assert_eq!(instruction.serialize(), ser_instruction);
+            prop_assert_eq!(instruction.serialize().unwrap(), ser_instruction);
         }
 
         #[test]
         fn test_arguments_serialization_props(args: Vec<Arg>) {
             let mut ser_arguments = Vec::new();
             for arg in &args {
-                ser_arguments.extend(arg.serialize());
+                ser_arguments.extend(arg.serialize().unwrap());
             }
-            prop_assert_eq!(args.serialize(), ser_arguments);
+            prop_assert_eq!(args.serialize().unwrap(), ser_arguments);
         }
 
         #[test]
@@ -353,13 +410,13 @@ mod test {
                 Arg::Immediate(d) =>
                     d.serialize(),
             };
-            prop_assert_eq!(arg.serialize(), ser_arg.unwrap());
+            prop_assert_eq!(arg.serialize().unwrap(), ser_arg.unwrap());
         }
     }
 
     #[test]
     fn test_init_id_serialization() {
         let id = Id { name: String::from("init") };
-        assert_eq!(id.serialize(), vec![0x44, 0xd6, 0x44, 0x1f]);
+        assert_eq!(id.serialize().unwrap(), vec![0x44, 0xd6, 0x44, 0x1f]);
     }
 }
