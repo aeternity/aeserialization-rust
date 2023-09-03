@@ -87,7 +87,7 @@ impl<'de> Deserialize<'de> for Gas {
     }
 }
 
-pub fn generate_fate_op_enum() -> std::io::Result<()> {
+pub fn generate_instructions_enum() -> std::io::Result<()> {
     let instructions: Instructions = {
         let contents = std::fs::read_to_string("fate.toml")
             .expect("File not found");
@@ -103,7 +103,7 @@ pub fn generate_fate_op_enum() -> std::io::Result<()> {
     file += "    }\n";
     file += "}\n";
     file += "#[derive(Debug)]\n";
-    file += "pub enum FateOp {\n";
+    file += "pub enum Instruction {\n";
     for i in &instructions.instruction {
         if i.arg_types.is_empty() {
             file += format!("    {},\n", i.opname).as_str();
@@ -113,9 +113,9 @@ pub fn generate_fate_op_enum() -> std::io::Result<()> {
     }
     file += "}\n";
 
-    file += "impl FateOp {\n";
+    file += "impl Instruction {\n";
     file += "    pub fn opcode(&self) -> u8 {\n";
-    file += "        use FateOp::*;\n";
+    file += "        use Instruction::*;\n";
     file += "        match self {\n";
     for i in &instructions.instruction {
         if i.arg_types.is_empty() {
@@ -129,8 +129,8 @@ pub fn generate_fate_op_enum() -> std::io::Result<()> {
     file += "    }\n";
     file += "\n";
 
-    file += "    pub fn args(&self) -> crate::code2::Arguments {\n";
-    file += "        use FateOp::*;\n";
+    file += "    pub fn args(&self) -> Vec<crate::code2::Arg> {\n";
+    file += "        use Instruction::*;\n";
     file += "        match self {\n";
     for i in &instructions.instruction {
         if i.arg_types.is_empty() {
@@ -138,14 +138,14 @@ pub fn generate_fate_op_enum() -> std::io::Result<()> {
         } else {
             file += format!("            {}({})", i.opname, (1..).map(|i| format!("a{i}")).take(i.arg_types.len()).collect::<Vec<String>>().join(", ")).as_str();
         }
-        file += format!(" => crate::code2::Arguments {{ args: vec![{}] }},\n", (1..).map(|i| format!("a{i}.clone()")).take(i.arg_types.len()).collect::<Vec<String>>().join(", ")).as_str();
+        file += format!(" => vec![{}],\n", (1..).map(|i| format!("a{i}.clone()")).take(i.arg_types.len()).collect::<Vec<String>>().join(", ")).as_str();
     }
     file += "        }\n";
     file += "    }\n";
 
     file += "\n";
     file += "    pub fn addressing_mode(&self) -> AddressingMode {\n";
-    file += "        let args = self.args().args;\n";
+    file += "        let args = self.args();\n";
     file += "        let padded_args = match args.len() {\n";
     file += "            0 => args,\n";
     file += "            1..=4 => [[0].repeat(4 - args.len()).iter().map(|z| Arg::Stack(0)).collect(), args].concat(),\n";
@@ -187,7 +187,7 @@ pub fn generate_fate_op_enum() -> std::io::Result<()> {
     file += "    }\n";
     file += "}\n";
 
-    std::fs::write("src/fate_op.rs", file)
+    std::fs::write("src/instruction.rs", file)
 }
 
 #[cfg(test)]
@@ -203,6 +203,6 @@ mod test {
 
     #[test]
     fn test_generate_file() -> std::io::Result<()> {
-        generate_fate_op_enum()
+        generate_instructions_enum()
     }
 }

@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, vec};
 
 use aeser::Bytes;
 
-use crate::{data::{types::Type, value::Value}, fate_op::{FateOp, AddressingMode}};
+use crate::{data::{types::Type, value::Value}, instruction::{Instruction, AddressingMode}};
 
 trait Serializable {
     fn serialize(&self) -> Bytes {
@@ -18,10 +18,10 @@ impl Serializable for Id {}
 impl Serializable for Function {}
 impl Serializable for Attributes {}
 impl Serializable for TypeSig {}
-impl Serializable for Instructions {}
-impl Serializable for FateOp {}
-impl Serializable for Arguments {}
+impl Serializable for Instruction {}
+impl Serializable for Vec<Instruction> {}
 impl Serializable for Arg {}
+impl Serializable for Vec<Arg> {}
 impl Serializable for AddressingMode {}
 
 #[derive(Debug)]
@@ -56,7 +56,7 @@ struct Function {
     id: Id,
     attributes: Attributes,
     type_sig: TypeSig,
-    instructions: Instructions,
+    instructions: Vec<Instruction>,
 }
 
 #[derive(Debug)]
@@ -74,16 +74,6 @@ enum Attribute {
 struct TypeSig {
     args: Vec<Type>,
     ret: Type,
-}
-
-#[derive(Debug)]
-struct Instructions {
-    ops: Vec<FateOp>,
-}
-
-#[derive(Debug)]
-pub struct Arguments {
-    pub args: Vec<Arg>,
 }
 
 #[derive(Debug, Clone)]
@@ -108,7 +98,7 @@ mod test {
                     id: Id { name: String::from("str") },
                     attributes: Attributes { attrs: vec![] },
                     type_sig: TypeSig { args: vec![], ret: Type::Address },
-                    instructions: Instructions { ops: vec![] },
+                    instructions: vec![],
                 }
             )
     }
@@ -146,15 +136,6 @@ mod test {
             )
     }
 
-    fn arb_arguments() -> impl Strategy<Value = Arguments> {
-        any::<u32>()
-            .prop_map(|_x|
-                Arguments {
-                    args: vec![]
-                }
-            )
-    }
-
     fn arb_arg() -> impl Strategy<Value = Arg> {
         any::<u32>()
             .prop_map(|_x|
@@ -170,19 +151,10 @@ mod test {
             )
     }
 
-    fn arb_instructions() -> impl Strategy<Value = Instructions> {
+    fn arb_instruction() -> impl Strategy<Value =Instruction> {
         any::<u32>()
             .prop_map(|_x|
-                Instructions{
-                    ops: vec![],
-                }
-            )
-    }
-
-    fn arb_instruction() -> impl Strategy<Value = FateOp> {
-        any::<u32>()
-            .prop_map(|_x|
-                FateOp::ADDRESS
+                Instruction::ADDRESS
             )
     }
 
@@ -261,24 +233,6 @@ mod test {
         }
     }
 
-    impl Arbitrary for Instructions {
-        type Parameters = ();
-        type Strategy = BoxedStrategy<Self>;
-
-        fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
-            arb_instructions().boxed()
-        }
-    }
-
-    impl Arbitrary for Arguments {
-        type Parameters = ();
-        type Strategy = BoxedStrategy<Self>;
-
-        fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
-            arb_arguments().boxed()
-        }
-    }
-
     impl Arbitrary for Arg {
         type Parameters = ();
         type Strategy = BoxedStrategy<Self>;
@@ -288,7 +242,7 @@ mod test {
         }
     }
 
-    impl Arbitrary for FateOp {
+    impl Arbitrary for Instruction {
         type Parameters = ();
         type Strategy = BoxedStrategy<Self>;
 
@@ -356,16 +310,16 @@ mod test {
         }
 
         #[test]
-        fn test_instructions_serialization_props(instructions: Instructions) {
+        fn test_instructions_serialization_props(instructions: Vec<Instruction>) {
             let mut ser_instructions = Vec::new();
-            for op in &instructions.ops {
+            for op in &instructions {
                 ser_instructions.extend(op.serialize());
             }
             prop_assert_eq!(instructions.serialize(), ser_instructions);
         }
 
         #[test]
-        fn test_instruction_serialization_props(instruction: FateOp) {
+        fn test_instruction_serialization_props(instruction: Instruction) {
             let ser_instruction = [
                 vec![instruction.opcode()],
                 instruction.addressing_mode().serialize(),
@@ -375,12 +329,12 @@ mod test {
         }
 
         #[test]
-        fn test_arguments_serialization_props(arguments: Arguments) {
+        fn test_arguments_serialization_props(args: Vec<Arg>) {
             let mut ser_arguments = Vec::new();
-            for arg in &arguments.args {
+            for arg in &args {
                 ser_arguments.extend(arg.serialize());
             }
-            prop_assert_eq!(arguments.serialize(), ser_arguments);
+            prop_assert_eq!(args.serialize(), ser_arguments);
         }
 
         #[test]
