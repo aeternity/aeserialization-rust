@@ -14,7 +14,15 @@ impl Serializable for Contract {}
 impl Serializable for Code {}
 impl Serializable for Symbols {}
 impl Serializable for Annotations {}
-impl Serializable for Id {}
+impl Serializable for Id {
+    fn serialize(&self) -> Bytes {
+        use blake2::{digest::consts::U32, Blake2b, Digest};
+        type Blake2b32 = Blake2b<U32>;
+        let mut hasher = Blake2b32::new();
+        hasher.update(self.name.as_str());
+        hasher.finalize()[0..4].to_vec()
+    }
+}
 impl Serializable for Function {}
 impl Serializable for Attributes {}
 impl Serializable for TypeSig {}
@@ -350,8 +358,8 @@ mod test {
     }
 
     #[test]
-    fn test_main_id_serialization() {
-        let id = Id { name: String::from("main") };
+    fn test_init_id_serialization() {
+        let id = Id { name: String::from("init") };
         assert_eq!(id.serialize(), vec![0x44, 0xd6, 0x44, 0x1f]);
     }
 }
