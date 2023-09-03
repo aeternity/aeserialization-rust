@@ -94,16 +94,48 @@ pub fn generate_fate_op_enum() -> std::io::Result<()> {
         toml::from_str(&contents)
             .expect("Failed to deserialize")
     };
-    let mut file = String::from("use crate::data::value::Value;\n\n");
+    let mut file = String::from("use crate::code2::Arg;\n\n");
+    file += "#[derive(Debug)]\n";
     file += "pub enum FateOp {\n";
-    for i in instructions.instruction {
+    for i in &instructions.instruction {
         if i.arg_types.is_empty() {
             file += format!("    {},\n", i.opname).as_str();
         } else {
-            file += format!("    {}({}),\n", i.opname, iter::repeat("Value").take(i.arg_types.len()).collect::<Vec<&str>>().join(", ")).as_str();
+            file += format!("    {}({}),\n", i.opname, iter::repeat("Arg").take(i.arg_types.len()).collect::<Vec<&str>>().join(", ")).as_str();
         }
     }
     file += "}\n";
+
+    file += "impl FateOp {\n";
+    file += "    pub fn opcode(&self) -> u8 {\n";
+    file += "        use FateOp::*;\n";
+    file += "        match self {\n";
+    for i in &instructions.instruction {
+        if i.arg_types.is_empty() {
+            file += format!("            {}", i.opname).as_str();
+        } else {
+            file += format!("            {}({})", i.opname, iter::repeat("_").take(i.arg_types.len()).collect::<Vec<&str>>().join(", ")).as_str();
+        }
+        file += format!(" => {:#x},\n", i.opcode).as_str();
+    }
+    file += "        }\n";
+    file += "    }\n";
+    file += "\n";
+    file += "    pub fn args(&self) -> crate::code2::Arguments {\n";
+    file += "        use FateOp::*;\n";
+    file += "        match self {\n";
+    for i in &instructions.instruction {
+        if i.arg_types.is_empty() {
+            file += format!("            {}", i.opname).as_str();
+        } else {
+            file += format!("            {}({})", i.opname, (1..).map(|i| format!("a{i}")).take(i.arg_types.len()).collect::<Vec<String>>().join(", ")).as_str();
+        }
+        file += format!(" => crate::code2::Arguments {{ args: vec![{}] }},\n", (1..).map(|i| format!("a{i}.clone()")).take(i.arg_types.len()).collect::<Vec<String>>().join(", ")).as_str();
+    }
+    file += "        }\n";
+    file += "    }\n";
+    file += "}\n";
+
     std::fs::write("src/fate_op.rs", file)
 }
 
