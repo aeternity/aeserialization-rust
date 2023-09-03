@@ -98,8 +98,8 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
     file += "pub enum AddressingMode {\n";
     file += "    Short(u8),\n";
     file += "    Long {\n";
-    file += "        high: u8,\n";
     file += "        low: u8,\n";
+    file += "        high: u8,\n";
     file += "    }\n";
     file += "}\n";
     file += "#[derive(Debug)]\n";

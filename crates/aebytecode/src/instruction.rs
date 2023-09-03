@@ -3,8 +3,8 @@ use crate::code2::Arg;
 pub enum AddressingMode {
     Short(u8),
     Long {
-        high: u8,
         low: u8,
+        high: u8,
     }
 }
 #[derive(Debug)]
