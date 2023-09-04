@@ -1,9 +1,12 @@
 use std::{collections::BTreeMap, vec};
 
-use aeser::{Bytes, rlp::ToRlpItem};
+use aeser::{rlp::ToRlpItem, Bytes};
 use num_bigint::BigInt;
 
-use crate::{data::{types::Type, value::Value, error::SerErr}, instruction::{Instruction, AddressingMode}};
+use crate::{
+    data::{error::SerErr, types::Type, value::Value},
+    instruction::{AddressingMode, Instruction},
+};
 
 pub trait Serializable {
     fn serialize(&self) -> Result<Bytes, SerErr>;
@@ -15,7 +18,8 @@ impl Serializable for Contract {
             self.code.serialize()?.to_rlp_item().serialize(),
             self.symbols.serialize()?.to_rlp_item().serialize(),
             self.annotations.serialize()?.to_rlp_item().serialize(),
-        ].concat();
+        ]
+        .concat();
         Ok(ser)
     }
 }
@@ -30,11 +34,15 @@ impl Serializable for Code {
 }
 impl Serializable for Symbols {
     fn serialize(&self) -> Result<Bytes, SerErr> {
-        let fate_vals_map = self.symbols
+        let fate_vals_map = self
+            .symbols
             .iter()
-            .map(|(k,v)|
-                (Value::String(k.as_bytes().to_vec()), Value::Integer(BigInt::from(*v)))
-            )
+            .map(|(k, v)| {
+                (
+                    Value::String(k.as_bytes().to_vec()),
+                    Value::Integer(BigInt::from(*v)),
+                )
+            })
             .collect();
         Ok(Value::Map(fate_vals_map).serialize()?)
     }
@@ -64,7 +72,8 @@ impl Serializable for Function {
             self.attributes.serialize()?,
             self.type_sig.serialize()?,
             self.instructions.serialize()?,
-        ].concat();
+        ]
+        .concat();
         Ok(ser)
     }
 }
@@ -75,7 +84,11 @@ impl Serializable for Attributes {
 }
 impl Serializable for TypeSig {
     fn serialize(&self) -> Result<Bytes, SerErr> {
-        Ok([Type::Tuple(self.args.clone()).serialize()?, self.ret.serialize()?].concat())
+        Ok([
+            Type::Tuple(self.args.clone()).serialize()?,
+            self.ret.serialize()?,
+        ]
+        .concat())
     }
 }
 impl Serializable for Instruction {
@@ -84,7 +97,8 @@ impl Serializable for Instruction {
             vec![self.opcode()],
             self.addressing_mode().serialize()?,
             self.args().serialize()?,
-        ].concat();
+        ]
+        .concat();
         Ok(ser)
     }
 }
@@ -100,10 +114,10 @@ impl Serializable for Vec<Instruction> {
 impl Serializable for Arg {
     fn serialize(&self) -> Result<Bytes, SerErr> {
         match self {
-            Arg::Stack(n) | Arg::Arg(n) | Arg::Var(n) =>
-                Value::Integer(BigInt::from(*n)).serialize(),
-            Arg::Immediate(v) =>
-                v.serialize(),
+            Arg::Stack(n) | Arg::Arg(n) | Arg::Var(n) => {
+                Value::Integer(BigInt::from(*n)).serialize()
+            }
+            Arg::Immediate(v) => v.serialize(),
         }
     }
 }
@@ -154,9 +168,7 @@ pub struct Id {
 
 impl Id {
     pub fn new(id_str: String) -> Self {
-        Id {
-            id_str
-        }
+        Id { id_str }
     }
 }
 
@@ -194,95 +206,72 @@ pub enum Arg {
 mod test {
     use super::*;
     use aeser::rlp::ToRlpItem;
-    use proptest::prelude::*;
     use num_bigint::BigInt;
+    use proptest::prelude::*;
 
     fn arb_function() -> impl Strategy<Value = Function> {
-        any::<u32>()
-            .prop_map(|_x|
-                Function {
-                    id: Id { id_str: String::from("str") },
-                    attributes: Attributes::None,
-                    type_sig: TypeSig { args: vec![], ret: Type::Address },
-                    instructions: vec![],
-                }
-            )
+        any::<u32>().prop_map(|_x| Function {
+            id: Id {
+                id_str: String::from("str"),
+            },
+            attributes: Attributes::None,
+            type_sig: TypeSig {
+                args: vec![],
+                ret: Type::Address,
+            },
+            instructions: vec![],
+        })
     }
 
     fn arb_id() -> impl Strategy<Value = Id> {
-        any::<String>()
-            .prop_map(|s|
-                Id { id_str: s }
-            )
+        any::<String>().prop_map(|s| Id { id_str: s })
     }
 
     fn arb_code() -> impl Strategy<Value = Code> {
-        any::<u32>()
-            .prop_map(|_x|
-                Code {
-                    functions: BTreeMap::new(),
-                }
-            )
+        any::<u32>().prop_map(|_x| Code {
+            functions: BTreeMap::new(),
+        })
     }
 
     fn arb_symbols() -> impl Strategy<Value = Symbols> {
-        any::<u32>()
-            .prop_map(|_x|
-                Symbols {
-                    symbols: BTreeMap::new(),
-                }
-            )
+        any::<u32>().prop_map(|_x| Symbols {
+            symbols: BTreeMap::new(),
+        })
     }
 
     fn arb_attrs() -> impl Strategy<Value = Attributes> {
-        any::<u32>()
-            .prop_map(|_x|
-                Attributes::None
-            )
+        any::<u32>().prop_map(|_x| Attributes::None)
     }
 
     fn arb_arg() -> impl Strategy<Value = Arg> {
-        any::<u32>()
-            .prop_map(|_x|
-                Arg::Stack(0)
-            )
+        any::<u32>().prop_map(|_x| Arg::Stack(0))
     }
 
     fn arb_annotations() -> impl Strategy<Value = Annotations> {
-        any::<u32>()
-            .prop_map(|_x|
-                Annotations {
-                    annotations: BTreeMap::new(),
-                }
-            )
+        any::<u32>().prop_map(|_x| Annotations {
+            annotations: BTreeMap::new(),
+        })
     }
 
-    fn arb_instruction() -> impl Strategy<Value =Instruction> {
-        any::<u32>()
-            .prop_map(|_x|
-                Instruction::ADDRESS
-            )
+    fn arb_instruction() -> impl Strategy<Value = Instruction> {
+        any::<u32>().prop_map(|_x| Instruction::ADDRESS)
     }
 
     fn arb_typesig() -> impl Strategy<Value = TypeSig> {
-        any::<u32>()
-            .prop_map(|_x|
-                TypeSig {
-                    args: vec![],
-                    ret: Type::Address,
-                }
-            )
+        any::<u32>().prop_map(|_x| TypeSig {
+            args: vec![],
+            ret: Type::Address,
+        })
     }
 
     fn arb_contract() -> impl Strategy<Value = Contract> {
-        (arb_code(), arb_symbols(), arb_annotations())
-            .prop_map(|(code, symbols, annotations)|
-                Contract {
-                    code,
-                    symbols,
-                    annotations,
-                }
-            )
+        (arb_code(), arb_symbols(), arb_annotations()).prop_map(|(code, symbols, annotations)| {
+            Contract {
+                code,
+                symbols,
+                annotations,
+            }
+        })
     }
 
     impl Arbitrary for Contract {
@@ -357,6 +346,7 @@ mod test {
         }
     }
 
+    // Property Tests
     proptest! {
         #[test]
         fn test_contract_serialization_props(c: Contract) {
@@ -454,9 +444,12 @@ mod test {
         }
     }
 
+    // Unit Tests
     #[test]
     fn test_init_id_serialization() {
-        let id = Id { id_str: String::from("init") };
+        let id = Id {
+            id_str: String::from("init"),
+        };
         assert_eq!(id.serialize().unwrap(), vec![0x44, 0xd6, 0x44, 0x1f]);
     }
 }
