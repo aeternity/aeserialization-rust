@@ -1,4 +1,4 @@
-use crate::code2::Arg;
+use crate::code::Arg;
 
 pub enum AddressingMode {
     Short(u8),
@@ -397,7 +397,7 @@ impl Instruction {
         }
     }
 
-    pub fn args(&self) -> Vec<crate::code2::Arg> {
+    pub fn args(&self) -> Vec<crate::code::Arg> {
         use Instruction::*;
         match self {
             RETURN => vec![],
@@ -625,7 +625,7 @@ impl Instruction {
         }
     }
 }
-fn modifier_bits(arg: &crate::code2::Arg) -> u8 {
+fn modifier_bits(arg: &crate::code::Arg) -> u8 {
     match arg {
         Arg::Stack(_) => 0b00,
         Arg::Arg(_) => 0b01,

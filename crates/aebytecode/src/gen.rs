@@ -94,7 +94,7 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
         toml::from_str(&contents)
             .expect("Failed to deserialize")
     };
-    let mut file = String::from("use crate::code2::Arg;\n\n");
+    let mut file = String::from("use crate::code::Arg;\n\n");
     file += "pub enum AddressingMode {\n";
     file += "    Short(u8),\n";
     file += "    Long {\n";
@@ -129,7 +129,7 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
     file += "    }\n";
     file += "\n";
 
-    file += "    pub fn args(&self) -> Vec<crate::code2::Arg> {\n";
+    file += "    pub fn args(&self) -> Vec<crate::code::Arg> {\n";
     file += "        use Instruction::*;\n";
     file += "        match self {\n";
     for i in &instructions.instruction {
@@ -178,7 +178,7 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
 
     file += "}\n";
 
-    file += "fn modifier_bits(arg: &crate::code2::Arg) -> u8 {\n";
+    file += "fn modifier_bits(arg: &crate::code::Arg) -> u8 {\n";
     file += "    match arg {\n";
     file += "        Arg::Stack(_) => 0b00,\n";
     file += "        Arg::Arg(_) => 0b01,\n";
