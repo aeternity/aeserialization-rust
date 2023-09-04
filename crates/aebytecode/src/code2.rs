@@ -1,20 +1,52 @@
 use std::{collections::BTreeMap, vec};
 
-use aeser::Bytes;
+use aeser::{Bytes, rlp::ToRlpItem};
 use num_bigint::BigInt;
 
 use crate::{data::{types::Type, value::Value, error::SerErr}, instruction::{Instruction, AddressingMode}};
 
 trait Serializable {
+    fn serialize(&self) -> Result<Bytes, SerErr>;
+}
+
+impl Serializable for Contract {
     fn serialize(&self) -> Result<Bytes, SerErr> {
+        let ser = [
+            self.code.serialize()?.to_rlp_item().serialize(),
+            self.symbols.serialize()?.to_rlp_item().serialize(),
+            self.annotations.serialize()?.to_rlp_item().serialize(),
+        ].concat();
+        Ok(ser)
+    }
+}
+impl Serializable for Code {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        let mut ser = Vec::new();
+        for fun in self.functions.values() {
+            ser.extend(fun.serialize()?);
+        }
+        Ok(ser)
+    }
+}
+impl Serializable for Symbols {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        let fate_vals_map = self.symbols
+            .iter()
+            .map(|(k,v)|
+                (Value::String(k.as_bytes().to_vec()), Value::Integer(BigInt::from(*v)))
+            )
+            .collect();
+        Ok(Value::Map(fate_vals_map).serialize()?)
+    }
+}
+impl Serializable for Annotations {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        if !self.annotations.is_empty() {
+            panic!("Annotations are not an empty")
+        }
         Ok(vec![])
     }
 }
-
-impl Serializable for Contract {}
-impl Serializable for Code {}
-impl Serializable for Symbols {}
-impl Serializable for Annotations {}
 impl Serializable for Id {
     fn serialize(&self) -> Result<Bytes, SerErr> {
         use blake2::{digest::consts::U32, Blake2b, Digest};
@@ -36,7 +68,11 @@ impl Serializable for Function {
         Ok(ser)
     }
 }
-impl Serializable for Attributes {}
+impl Serializable for Attributes {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        Ok(vec![*self as u8])
+    }
+}
 impl Serializable for TypeSig {
     fn serialize(&self) -> Result<Bytes, SerErr> {
         Ok([Type::Tuple(self.args.clone()).serialize()?, self.ret.serialize()?].concat())
@@ -103,12 +139,12 @@ struct Code {
 
 #[derive(Debug)]
 struct Symbols {
-
+    symbols: BTreeMap<String, u32>,
 }
 
 #[derive(Debug)]
 struct Annotations {
-
+    annotations: BTreeMap<u32, u32>,
 }
 
 #[derive(Debug)]
@@ -124,15 +160,12 @@ struct Function {
     instructions: Vec<Instruction>,
 }
 
-#[derive(Debug)]
-struct Attributes {
-    attrs: Vec<Attribute>,
-}
-
-#[derive(Debug, PartialEq)]
-enum Attribute {
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Attributes {
+    None = 0,
     Private = 1,
     Payable = 2,
+    PrivatePayable = 3,
 }
 
 #[derive(Debug)]
@@ -161,7 +194,7 @@ mod test {
             .prop_map(|_x|
                 Function {
                     id: Id { name: String::from("str") },
-                    attributes: Attributes { attrs: vec![] },
+                    attributes: Attributes::None,
                     type_sig: TypeSig { args: vec![], ret: Type::Address },
                     instructions: vec![],
                 }
@@ -188,6 +221,7 @@ mod test {
         any::<u32>()
             .prop_map(|_x|
                 Symbols {
+                    symbols: BTreeMap::new(),
                 }
             )
     }
@@ -195,9 +229,7 @@ mod test {
     fn arb_attrs() -> impl Strategy<Value = Attributes> {
         any::<u32>()
             .prop_map(|_x|
-                Attributes {
-                    attrs: vec![]
-                }
+                Attributes::None
             )
     }
 
@@ -212,6 +244,7 @@ mod test {
         any::<u32>()
             .prop_map(|_x|
                 Annotations {
+                    annotations: BTreeMap::new(),
                 }
             )
     }
@@ -355,14 +388,13 @@ mod test {
 
         #[test]
         fn test_attributes_serialization_props(attrs: Attributes) {
-            let mut total = 0;
-            if attrs.attrs.contains(&Attribute::Private) {
-                total += 1;
-            }
-            if attrs.attrs.contains(&Attribute::Payable) {
-                total += 2;
-            }
-            prop_assert_eq!(attrs.serialize().unwrap(), vec![total]);
+            let ser = match attrs {
+                Attributes::None => 0,
+                Attributes::Private => 1,
+                Attributes::Payable => 2,
+                Attributes::PrivatePayable => 3,
+            };
+            prop_assert_eq!(attrs.serialize().unwrap(), vec![ser]);
         }
 
         #[test]
