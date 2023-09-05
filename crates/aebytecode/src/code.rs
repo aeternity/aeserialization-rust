@@ -266,7 +266,7 @@ mod test {
     }
 
     fn arb_instruction() -> impl Strategy<Value = Instruction> {
-        any::<u32>().prop_map(|_x| Instruction::ADDRESS)
+        any::<u32>().prop_map(|_x| Instruction::Address)
     }
 
     fn arb_typesig() -> impl Strategy<Value = TypeSig> {
@@ -516,7 +516,7 @@ mod test {
                     }),
                 },
             },
-            instructions: vec![Instruction::RETURNR(Arg::Immediate(Value::Map(map)))],
+            instructions: vec![Instruction::Returnr(Arg::Immediate(Value::Map(map)))],
         };
 
         let fun_name = "map";

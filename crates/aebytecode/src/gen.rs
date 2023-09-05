@@ -91,8 +91,12 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
     let instructions: Instructions = {
         let contents = std::fs::read_to_string("fate.toml")
             .expect("File not found");
-        toml::from_str(&contents)
-            .expect("Failed to deserialize")
+        let mut instrs: Instructions = toml::from_str(&contents)
+            .expect("Failed to deserialize");
+        for instr in &mut instrs.instruction {
+            instr.opname = change_case::pascal_case(instr.opname.as_str());
+        }
+        instrs
     };
     let mut file = String::from("use crate::code::Arg;\n\n");
     file += "pub enum AddressingMode {\n";
@@ -148,8 +152,8 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
     file += "        let args = self.args();\n";
     file += "        let padded_args = match args.len() {\n";
     file += "            0 => args,\n";
-    file += "            1..=4 => [[0].repeat(4 - args.len()).iter().map(|z| Arg::Stack(0)).collect(), args].concat(),\n";
-    file += "            5..=8 => [[0].repeat(8 - args.len()).iter().map(|z| Arg::Stack(0)).collect(), args].concat(),\n";
+    file += "            1..=4 => [[0].repeat(4 - args.len()).iter().map(|_| Arg::Stack(0)).collect(), args].concat(),\n";
+    file += "            5..=8 => [[0].repeat(8 - args.len()).iter().map(|_| Arg::Stack(0)).collect(), args].concat(),\n";
     file += "            _ => panic!(\"Args length should be less than or equal to 8\"),\n";
     file += "        };\n";
     file += "        if padded_args.len() == 4 {\n";
