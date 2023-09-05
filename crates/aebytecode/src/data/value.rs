@@ -52,9 +52,16 @@ impl PartialOrd for Value {
 // TODO: implement total ordering
 impl Ord for Value {
     fn cmp(&self, other: &Self) -> Ordering {
+        use Value::*;
         match self.partial_cmp(other) {
             Some(ordering) => ordering,
-            None => Ordering::Equal
+            None =>
+                match (self, other) {
+                    (Boolean(a), Boolean(b)) => a.cmp(b),
+                    (Integer(a), Integer(b)) => a.cmp(b),
+                    (String(a), String(b)) => a.cmp(b),
+                    _ => Ordering::Equal,
+                }
         }
     }
 }

@@ -39,20 +39,30 @@ impl Serializable for Symbols {
             .iter()
             .map(|(k, v)| {
                 (
-                    Value::String(k.as_bytes().to_vec()),
-                    Value::Integer(BigInt::from(*v)),
+                    Value::String(k.to_vec()),
+                    Value::String(v.as_bytes().to_vec()),
                 )
             })
             .collect();
         Ok(Value::Map(fate_vals_map).serialize()?)
     }
 }
-impl Serializable for Annotations {
+impl Serializable for Vec<Annotation> {
     fn serialize(&self) -> Result<Bytes, SerErr> {
-        if !self.annotations.is_empty() {
-            panic!("Annotations are not an empty")
+        let mut map = BTreeMap::new();
+        for ann in self {
+            match ann {
+                Annotation::Comment { line, comment } => {
+                    let key = Value::Tuple(vec![
+                        Value::String("comment".as_bytes().to_vec()),
+                        Value::Integer(BigInt::from(*line)),
+                    ]);
+                    let val = Value::String(comment.as_bytes().to_vec());
+                    map.insert(key, val);
+                }
+            }
         }
-        Ok(vec![])
+        Ok(Value::Map(map).serialize()?)
     }
 }
 impl Serializable for Id {
@@ -143,22 +153,23 @@ impl Serializable for AddressingMode {
 struct Contract {
     code: Code,
     symbols: Symbols,
-    annotations: Annotations,
+    annotations: Vec<Annotation>,
 }
 
 #[derive(Debug)]
 struct Code {
-    functions: BTreeMap<u32, Function>,
+    // TODO: no need to store as map? map is only needed for sorting?
+    functions: BTreeMap<Bytes, Function>,
 }
 
 #[derive(Debug)]
 struct Symbols {
-    symbols: BTreeMap<String, u32>,
+    symbols: BTreeMap<Bytes, String>,
 }
 
 #[derive(Debug)]
-struct Annotations {
-    annotations: BTreeMap<u32, u32>,
+enum Annotation {
+    Comment { line: u32, comment: String },
 }
 
 #[derive(Debug)]
@@ -247,9 +258,10 @@ mod test {
         any::<u32>().prop_map(|_x| Arg::Stack(0))
     }
 
-    fn arb_annotations() -> impl Strategy<Value = Annotations> {
-        any::<u32>().prop_map(|_x| Annotations {
-            annotations: BTreeMap::new(),
+    fn arb_annotation() -> impl Strategy<Value = Annotation> {
+        any::<u32>().prop_map(|_x| Annotation::Comment {
+            line: 1,
+            comment: String::from("()"),
         })
     }
 
@@ -265,13 +277,13 @@ mod test {
     }
 
     fn arb_contract() -> impl Strategy<Value = Contract> {
-        (arb_code(), arb_symbols(), arb_annotations()).prop_map(|(code, symbols, annotations)| {
-            Contract {
+        (arb_code(), arb_symbols(), any::<Vec<Annotation>>()).prop_map(
+            |(code, symbols, annotations)| Contract {
                 code,
                 symbols,
                 annotations,
-            }
-        })
+            },
+        )
     }
 
     impl Arbitrary for Contract {
@@ -346,6 +358,15 @@ mod test {
         }
     }
 
+    impl Arbitrary for Annotation {
+        type Parameters = ();
+        type Strategy = BoxedStrategy<Self>;
+
+        fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
+            arb_annotation().boxed()
+        }
+    }
+
     // Property Tests
     proptest! {
         #[test]
@@ -359,7 +380,7 @@ mod test {
         #[test]
         fn test_code_serialization_props(c: Code) {
             let mut ser_funs = Vec::new();
-            let names: Vec<u32> = c.functions.keys().cloned().collect();
+            let names: Vec<Bytes> = c.functions.keys().cloned().collect();
             prop_assert!(names.windows(2).all(|w| w[0] <= w[1]));
             for fun in c.functions.values() {
                 ser_funs.extend(fun.serialize().unwrap());
@@ -451,5 +472,77 @@ mod test {
             id_str: String::from("init"),
         };
         assert_eq!(id.serialize().unwrap(), vec![0x44, 0xd6, 0x44, 0x1f]);
+    }
+
+    #[test]
+    fn test_serialize_contract() {
+        let byte_code = vec![
+            169, 254, 89, 123, 141, 76, 0, 55, 0, 103, 7, 103, 119, 23, 1, 3, 47, 3, 2, 47, 2, 13,
+            98, 97, 114, 127, 13, 102, 111, 111, 255, 4, 47, 0, 6, 47, 1, 13, 102, 111, 111, 127,
+            139, 47, 1, 17, 89, 123, 141, 76, 13, 109, 97, 112, 159, 47, 1, 43, 29, 99, 111, 109,
+            109, 101, 110, 116, 2, 73, 32, 67, 79, 78, 84, 82, 65, 67, 84, 32, 109, 97, 112, 111,
+            102, 109, 97, 112,
+        ];
+
+        let mut map1 = BTreeMap::new();
+        map1.insert(
+            Value::String("foo".as_bytes().to_vec()),
+            Value::Boolean(true),
+        );
+        map1.insert(
+            Value::String("bar".as_bytes().to_vec()),
+            Value::Boolean(false),
+        );
+        let mut map2 = BTreeMap::new();
+        let mut map3 = BTreeMap::new();
+        map3.insert(
+            Value::String("foo".as_bytes().to_vec()),
+            Value::Boolean(false),
+        );
+        let mut map = BTreeMap::new();
+        map.insert(Value::Integer(BigInt::from(1)), Value::Map(map1));
+        map.insert(Value::Integer(BigInt::from(2)), Value::Map(map2));
+        map.insert(Value::Integer(BigInt::from(3)), Value::Map(map3));
+        let fun = Function {
+            id: Id::new(String::from("map")),
+            attributes: Attributes::None,
+            type_sig: TypeSig {
+                args: vec![],
+                ret: Type::Map {
+                    key: Box::new(Type::Integer),
+                    val: Box::new(Type::Map {
+                        key: Box::new(Type::String),
+                        val: Box::new(Type::Boolean),
+                    }),
+                },
+            },
+            instructions: vec![Instruction::RETURNR(Arg::Immediate(Value::Map(map)))],
+        };
+
+        let fun_name = "map";
+        let fun_id = Id::new(String::from(fun_name)).serialize().unwrap();
+        let mut map_code = BTreeMap::new();
+        map_code.insert(fun_id.clone(), fun);
+        let mut map_symbols = BTreeMap::new();
+        map_symbols.insert(fun_id, fun_name.to_string());
+
+        let code = Code {
+            functions: map_code,
+        };
+        let symbols = Symbols {
+            symbols: map_symbols,
+        };
+        let annotations = vec![Annotation::Comment {
+            line: 1,
+            comment: String::from(" CONTRACT mapofmap"),
+        }];
+
+        let contract = Contract {
+            code,
+            symbols,
+            annotations,
+        };
+
+        assert_eq!(contract.serialize().unwrap(), byte_code);
     }
 }
