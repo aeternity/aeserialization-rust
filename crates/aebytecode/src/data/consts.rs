@@ -74,7 +74,20 @@ pub fn is_short_list(tag: u8) -> bool {
 }
 
 pub fn is_type_tag(tag: u8) -> bool {
-    [TYPE_INTEGER, TYPE_BOOLEAN, TYPE_LIST, TYPE_TUPLE, TYPE_OBJECT,
-    TYPE_BITS, TYPE_MAP, TYPE_STRING, TYPE_VARIANT, TYPE_BYTES,
-    TYPE_CONTRACT_BYTEARRAY, TYPE_VAR, TYPE_ANY].contains(&tag)
+    [
+        TYPE_INTEGER,
+        TYPE_BOOLEAN,
+        TYPE_LIST,
+        TYPE_TUPLE,
+        TYPE_OBJECT,
+        TYPE_BITS,
+        TYPE_MAP,
+        TYPE_STRING,
+        TYPE_VARIANT,
+        TYPE_BYTES,
+        TYPE_CONTRACT_BYTEARRAY,
+        TYPE_VAR,
+        TYPE_ANY,
+    ]
+    .contains(&tag)
 }

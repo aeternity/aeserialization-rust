@@ -1,23 +1,31 @@
+mod consts;
 pub mod error;
 pub mod types;
 pub mod value;
-mod consts;
 
 use num_bigint::BigInt;
 use num_traits::Signed;
 
-use aeser::{Bytes, rlp::ToRlpItem};
+use aeser::{rlp::ToRlpItem, Bytes};
 
 use consts::*;
 
 fn serialize_int(n: &BigInt) -> Bytes {
     let abs = n.abs();
-    let sign = if *n < BigInt::from(0) {NEG_SIGN} else {POS_SIGN};
+    let sign = if *n < BigInt::from(0) {
+        NEG_SIGN
+    } else {
+        POS_SIGN
+    };
     if abs < BigInt::from(SMALL_INT_SIZE) {
         let small_abs: u8 = abs.try_into().expect("is abs < SMALL_INT_SIZE ?");
         vec![sign << 7 | small_abs << 1 | SMALL_INT]
     } else {
-        let big_int_byte = if sign == NEG_SIGN {NEG_BIG_INT} else {POS_BIG_INT};
+        let big_int_byte = if sign == NEG_SIGN {
+            NEG_BIG_INT
+        } else {
+            POS_BIG_INT
+        };
         let diff = (abs - BigInt::from(SMALL_INT_SIZE))
             .to_biguint()
             .expect("is abs >= SMALL_INT_SIZE ?")
@@ -30,24 +38,20 @@ fn serialize_int(n: &BigInt) -> Bytes {
 
 #[cfg(test)]
 mod test {
-    use std::{vec, collections::BTreeMap};
+    use std::{collections::BTreeMap, vec};
 
     use crate::data::types::BytesSize;
 
-    use super::{value::Value, types::Type};
-    use aeser::{Bytes, rlp::ToRlpItem};
-    use num_bigint::{BigInt, Sign, BigUint};
+    use super::{types::Type, value::Value};
+    use aeser::{rlp::ToRlpItem, Bytes};
+    use num_bigint::{BigInt, BigUint, Sign};
     use num_traits::{FromPrimitive, ToPrimitive};
-    use proptest::{prelude::*, arbitrary::Arbitrary};
+    use proptest::{arbitrary::Arbitrary, prelude::*};
 
     fn arb_bigint() -> impl Strategy<Value = BigInt> {
-        (any::<bool>(), any::<Vec<u8>>())
-            .prop_map(|(sign, bytes)|
-                BigInt::from_bytes_be(
-                    if sign {Sign::Plus} else {Sign::Minus},
-                    &bytes
-                )
-            )
+        (any::<bool>(), any::<Vec<u8>>()).prop_map(|(sign, bytes)| {
+            BigInt::from_bytes_be(if sign { Sign::Plus } else { Sign::Minus }, &bytes)
+        })
     }
 
     impl Arbitrary for BytesSize {
@@ -57,9 +61,10 @@ mod test {
             prop_oneof![
                 Just(BytesSize::Unsized),
                 any::<usize>().prop_map(BytesSize::Sized)
-            ].boxed()
+            ]
+            .boxed()
         }
-    }    
+    }
 
     impl Arbitrary for Type {
         type Parameters = ();
@@ -90,12 +95,15 @@ mod test {
                 3,
                 20,
                 10,
-                |inner| prop_oneof! {
-                    inner.clone().prop_map(|x| Type::List(Box::new(x))),
-                    prop::collection::vec(inner.clone(), 0..100).prop_map(Type::Tuple),
-                    prop::collection::vec(inner, 0..100).prop_map(Type::Variant),
-                }
-            ).boxed()
+                |inner| {
+                    prop_oneof! {
+                        inner.clone().prop_map(|x| Type::List(Box::new(x))),
+                        prop::collection::vec(inner.clone(), 0..100).prop_map(Type::Tuple),
+                        prop::collection::vec(inner, 0..100).prop_map(Type::Variant),
+                    }
+                },
+            )
+            .boxed()
         }
     }
 
@@ -118,11 +126,14 @@ mod test {
                 5,
                 256,
                 100,
-                |inner| prop_oneof! {
-                    prop::collection::vec(inner.clone(), 0..100).prop_map(Value::List),
-                    prop::collection::vec(inner, 0..100).prop_map(Value::Tuple),
-                }
-            ).boxed()
+                |inner| {
+                    prop_oneof! {
+                        prop::collection::vec(inner.clone(), 0..100).prop_map(Value::List),
+                        prop::collection::vec(inner, 0..100).prop_map(Value::Tuple),
+                    }
+                },
+            )
+            .boxed()
         }
     }
 
@@ -164,10 +175,8 @@ mod test {
 
     fn test_boolean_props(ser: Bytes, b: bool) {
         match b {
-            true =>
-                assert_eq!(ser, vec![0b1111_1111]),
-            false =>
-                assert_eq!(ser, vec![0b0111_1111]),
+            true => assert_eq!(ser, vec![0b1111_1111]),
+            false => assert_eq!(ser, vec![0b0111_1111]),
         }
     }
 
@@ -175,18 +184,17 @@ mod test {
         if n.magnitude() < &BigUint::from(64u32) {
             let int = n.to_u8().unwrap();
             match n.sign() {
-                Sign::NoSign | Sign::Plus =>
-                    assert_eq!(ser, vec![int << 1]),
-                Sign::Minus =>
-                    assert_eq!(ser, vec![0b1000_0000 | (int << 1)]),
+                Sign::NoSign | Sign::Plus => assert_eq!(ser, vec![int << 1]),
+                Sign::Minus => assert_eq!(ser, vec![0b1000_0000 | (int << 1)]),
             }
         } else {
-            let rlp_n = (n.magnitude() - BigUint::from(64u32)).to_bytes_be().to_rlp_item().serialize();
+            let rlp_n = (n.magnitude() - BigUint::from(64u32))
+                .to_bytes_be()
+                .to_rlp_item()
+                .serialize();
             match n.sign() {
-                Sign::NoSign | Sign::Plus =>
-                    assert_eq!(ser, [vec![0b0110_1111], rlp_n].concat()),
-                Sign::Minus =>
-                    assert_eq!(ser, [vec![0b1110_1111], rlp_n].concat()),
+                Sign::NoSign | Sign::Plus => assert_eq!(ser, [vec![0b0110_1111], rlp_n].concat()),
+                Sign::Minus => assert_eq!(ser, [vec![0b1110_1111], rlp_n].concat()),
             }
         }
     }
@@ -196,7 +204,10 @@ mod test {
             assert_eq!(ser, vec![0b0101_1111]);
         } else if str.len() < 64 {
             let len_byte = str.len() as u8;
-            assert_eq!(ser, [vec![(len_byte << 2) | 0b0000_0001], str.to_vec()].concat());
+            assert_eq!(
+                ser,
+                [vec![(len_byte << 2) | 0b0000_0001], str.to_vec()].concat()
+            );
         } else {
             let len_bigint = BigInt::from_usize(str.len() - 64).unwrap();
             let len_bytes = Value::Integer(len_bigint).serialize().unwrap();
@@ -207,16 +218,17 @@ mod test {
     fn test_bits_props(ser: Bytes, n: BigInt) {
         let rlp_n = n.magnitude().to_bytes_be().to_rlp_item().serialize();
         match n.sign() {
-            Sign::NoSign | Sign::Plus =>
-                assert_eq!(ser, [vec![0b0100_1111], rlp_n].concat()),
-            Sign::Minus =>
-                assert_eq!(ser, [vec![0b1100_1111], rlp_n].concat()),
+            Sign::NoSign | Sign::Plus => assert_eq!(ser, [vec![0b0100_1111], rlp_n].concat()),
+            Sign::Minus => assert_eq!(ser, [vec![0b1100_1111], rlp_n].concat()),
         }
     }
 
     fn test_bytes_props(ser: Bytes, bytes: Bytes) {
         let bytes_as_string_ser = Value::String(bytes).serialize().unwrap();
-        assert_eq!(ser, [vec![0b1001_1111, 0b0000_0001], bytes_as_string_ser].concat());
+        assert_eq!(
+            ser,
+            [vec![0b1001_1111, 0b0000_0001], bytes_as_string_ser].concat()
+        );
     }
 
     fn test_address_props(ser: Bytes, address: Bytes) {
@@ -245,7 +257,9 @@ mod test {
     }
 
     fn test_contract_bytearray_props(ser: Bytes, contract: Bytes) {
-        let len_bytes = Value::Integer(BigInt::from(contract.len())).serialize().unwrap();
+        let len_bytes = Value::Integer(BigInt::from(contract.len()))
+            .serialize()
+            .unwrap();
         assert_eq!(ser, [vec![0b1000_1111], len_bytes, contract].concat());
     }
 
@@ -258,7 +272,10 @@ mod test {
             for elem in elems {
                 ser_elems.extend(elem.serialize().unwrap());
             }
-            assert_eq!(ser, [vec![(len_byte << 4) | 0b0000_1011], ser_elems].concat())
+            assert_eq!(
+                ser,
+                [vec![(len_byte << 4) | 0b0000_1011], ser_elems].concat()
+            )
         } else {
             let len_bytes = (elems.len() - 16).to_rlp_item().serialize();
             let mut ser_elems = Vec::new();
@@ -276,7 +293,10 @@ mod test {
             for elem in elems {
                 ser_elems.extend(elem.serialize().unwrap());
             }
-            assert_eq!(ser, [vec![(len_byte << 4) | 0b0000_0011], ser_elems].concat())
+            assert_eq!(
+                ser,
+                [vec![(len_byte << 4) | 0b0000_0011], ser_elems].concat()
+            )
         } else {
             let len_bytes = (elems.len() - 16).to_rlp_item().serialize();
             let mut ser_elems = Vec::new();
@@ -298,14 +318,19 @@ mod test {
     }
 
     fn test_store_map_props(ser: Bytes, id: u32) {
-        let id_bytes = Value::Integer(BigInt::from_u32(id).unwrap()).serialize().unwrap();
+        let id_bytes = Value::Integer(BigInt::from_u32(id).unwrap())
+            .serialize()
+            .unwrap();
         assert_eq!(ser, [vec![0b1011_1111], id_bytes].concat());
     }
 
     fn test_variant_props(ser: Bytes, arities: Vec<u8>, tag: u8, elems: Vec<Value>) {
         let rlp_arities = arities.to_rlp_item().serialize();
         let ser_elems = Value::Tuple(elems).serialize().unwrap();
-        assert_eq!(ser, [vec![0b1010_1111], rlp_arities, vec![tag], ser_elems].concat());
+        assert_eq!(
+            ser,
+            [vec![0b1010_1111], rlp_arities, vec![tag], ser_elems].concat()
+        );
     }
 
     fn test_typerep_props(_ser: Bytes, _t: Type) {

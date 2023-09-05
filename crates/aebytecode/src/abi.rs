@@ -1,6 +1,12 @@
 use aeser::Bytes;
 
-use crate::{data::{value::Value, error::{SerErr, DeserErr}}, code::{self, Serializable}};
+use crate::{
+    code::{self, Serializable},
+    data::{
+        error::{DeserErr, SerErr},
+        value::Value,
+    },
+};
 
 /// Return the current ABI version.
 pub fn abi_version() -> u32 {
@@ -16,18 +22,16 @@ pub fn create_calldata(fun_name: &String, args: Vec<Value>) -> Result<Bytes, Ser
 
 /// Decode the calldata into a list of args given the function name and encoded calldata.
 pub fn decode_calldata(fun_name: &String, calldata: Bytes) -> Result<Vec<Value>, DeserErr> {
-    let fun_id = code::Id::new(fun_name.clone()).serialize()
+    let fun_id = code::Id::new(fun_name.clone())
+        .serialize()
         // TODO: Map to a more relevant error
         .map_err(|_| DeserErr::CalldataDecodeErr)?;
     let fun_id_val = Value::Bytes(fun_id);
     match Value::deserialize(&calldata)? {
-        Value::Tuple(elems)
-            if elems.len() == 2
-            && elems[0] == fun_id_val =>
-            match &elems[1] {
-                Value::Tuple(args) => Ok(args.to_vec()),
-                _ => Err(DeserErr::CalldataDecodeErr)
-            }
+        Value::Tuple(elems) if elems.len() == 2 && elems[0] == fun_id_val => match &elems[1] {
+            Value::Tuple(args) => Ok(args.to_vec()),
+            _ => Err(DeserErr::CalldataDecodeErr),
+        },
         _ => Err(DeserErr::CalldataDecodeErr),
     }
 }
@@ -35,8 +39,8 @@ pub fn decode_calldata(fun_name: &String, calldata: Bytes) -> Result<Vec<Value>,
 #[cfg(test)]
 mod test {
     use super::*;
-    use proptest::prelude::*;
     use crate::data::value::Value;
+    use proptest::prelude::*;
 
     proptest! {
         #[test]

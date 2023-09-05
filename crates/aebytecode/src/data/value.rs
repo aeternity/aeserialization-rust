@@ -1,16 +1,16 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
-use num_bigint::{BigInt, Sign, BigUint};
+use num_bigint::{BigInt, BigUint, Sign};
 
-use aeser::rlp::{ToRlpItem, RlpItem, FromRlpItem};
+use aeser::rlp::{FromRlpItem, RlpItem, ToRlpItem};
 use aeser::Bytes;
 use num_traits::{ToPrimitive, Zero};
 
 use super::*;
 use consts::*;
+use error::{DeserErr, SerErr};
 use types::Type;
-use error::{SerErr, DeserErr};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Value {
@@ -29,14 +29,15 @@ pub enum Value {
     ContractBytearray(Bytes),
     Typerep(Type),
     Map(BTreeMap<Value, Value>),
-    StoreMap { // TODO: check if these are the right types
+    StoreMap {
+        // TODO: check if these are the right types
         cache: BTreeMap<Value, Value>,
-        id: u32
+        id: u32,
     },
     Variant {
         arities: Vec<u8>,
         tag: u8,
-        values: Vec<Value>
+        values: Vec<Value>,
     },
 }
 
@@ -44,7 +45,7 @@ impl PartialOrd for Value {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         match self.ordinal().cmp(&other.ordinal()) {
             Ordering::Equal => None,
-            ordering => Some(ordering)
+            ordering => Some(ordering),
         }
     }
 }
@@ -55,13 +56,12 @@ impl Ord for Value {
         use Value::*;
         match self.partial_cmp(other) {
             Some(ordering) => ordering,
-            None =>
-                match (self, other) {
-                    (Boolean(a), Boolean(b)) => a.cmp(b),
-                    (Integer(a), Integer(b)) => a.cmp(b),
-                    (String(a), String(b)) => a.cmp(b),
-                    _ => Ordering::Equal,
-                }
+            None => match (self, other) {
+                (Boolean(a), Boolean(b)) => a.cmp(b),
+                (Integer(a), Integer(b)) => a.cmp(b),
+                (String(a), String(b)) => a.cmp(b),
+                _ => Ordering::Equal,
+            },
         }
     }
 }
@@ -71,15 +71,19 @@ impl Value {
         use Value::*;
 
         let bytes = match self {
-            Boolean(b) => vec![if *b {TRUE} else {FALSE}],
+            Boolean(b) => vec![if *b { TRUE } else { FALSE }],
             Integer(x) => serialize_int(x),
             Bits(x) => {
-                let bits_byte = if *x < BigInt::from(0) {NEG_BITS} else {POS_BITS};
+                let bits_byte = if *x < BigInt::from(0) {
+                    NEG_BITS
+                } else {
+                    POS_BITS
+                };
                 let mut res = vec![bits_byte];
                 res.extend(x.magnitude().to_bytes_be().to_rlp_item().serialize());
                 res
             }
-            String(str) =>
+            String(str) => {
                 if str.is_empty() {
                     vec![EMPTY_STRING]
                 } else if str.len() < SHORT_STRING_SIZE {
@@ -93,14 +97,15 @@ impl Value {
                     res.extend(str);
                     res
                 }
-            Tuple(elems) =>
+            }
+            Tuple(elems) => {
                 if elems.is_empty() {
                     vec![EMPTY_TUPLE]
                 } else {
                     Self::serialize_many(elems, SHORT_TUPLE_SIZE, SHORT_TUPLE, LONG_TUPLE)?
                 }
-            List(elems) =>
-                Self::serialize_many(elems, SHORT_LIST_SIZE, SHORT_LIST, LONG_LIST)?,
+            }
+            List(elems) => Self::serialize_many(elems, SHORT_LIST_SIZE, SHORT_LIST, LONG_LIST)?,
             Bytes(bytes) => {
                 let mut res = vec![OBJECT, OTYPE_BYTES];
                 res.extend(String(bytes.to_vec()).serialize()?);
@@ -125,13 +130,22 @@ impl Value {
                 if !map.is_empty() {
                     let some_key = map.keys().next().unwrap();
                     let some_val = map.values().next().unwrap();
-                    if map.keys().any(|k| match k { Map(_) => true, _ => false }) {
+                    if map.keys().any(|k| match k {
+                        Map(_) => true,
+                        _ => false,
+                    }) {
                         Err(SerErr::MapAsKeyType)?
                     }
-                    if !map.keys().all(|k| std::mem::discriminant(k) == std::mem::discriminant(some_key)) {
+                    if !map
+                        .keys()
+                        .all(|k| std::mem::discriminant(k) == std::mem::discriminant(some_key))
+                    {
                         Err(SerErr::HeteroMapKeys)?
                     }
-                    if !map.values().all(|v| std::mem::discriminant(v) == std::mem::discriminant(some_val)) {
+                    if !map
+                        .values()
+                        .all(|v| std::mem::discriminant(v) == std::mem::discriminant(some_val))
+                    {
                         Err(SerErr::HeteroMapValues)?
                     }
                 }
@@ -142,14 +156,18 @@ impl Value {
                 }
                 res
             }
-            StoreMap{cache, id} => {
+            StoreMap { cache, id } => {
                 if cache.is_empty() {
                     [vec![MAP_ID], id.to_rlp_item().serialize()].concat()
                 } else {
                     Err(SerErr::NonEmptyStoreMapCache)?
                 }
             }
-            Variant{arities, tag, values} => {
+            Variant {
+                arities,
+                tag,
+                values,
+            } => {
                 if (*tag as usize) < arities.len() {
                     let arity = arities[*tag as usize] as usize;
                     if values.len() == arity {
@@ -171,7 +189,12 @@ impl Value {
         Ok(bytes)
     }
 
-    fn serialize_many(elems: &Vec<Self>, short_size: usize, short_id: u8, long_id: u8) -> Result<Bytes, SerErr> {
+    fn serialize_many(
+        elems: &Vec<Self>,
+        short_size: usize,
+        short_id: u8,
+        long_id: u8,
+    ) -> Result<Bytes, SerErr> {
         if elems.len() < short_size {
             let size = elems.len() as u8;
             let mut res = vec![(size << 4) | short_id];
@@ -196,8 +219,8 @@ impl Value {
             (value, rest) => Err(DeserErr::Trailing {
                 input: bytes.to_vec(),
                 undecoded: rest.to_vec(),
-                decoded: value
-            })
+                decoded: value,
+            }),
         }
     }
 
@@ -215,11 +238,21 @@ impl Value {
             EMPTY_STRING => (String(vec![]), &bytes[1..]),
             NEG_BIG_INT => {
                 let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
-                (Integer(BigInt::from_bytes_be(Sign::Minus, &decoded) - BigInt::from(SMALL_INT_SIZE)), rest)
+                (
+                    Integer(
+                        BigInt::from_bytes_be(Sign::Minus, &decoded) - BigInt::from(SMALL_INT_SIZE),
+                    ),
+                    rest,
+                )
             }
             POS_BIG_INT => {
                 let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
-                (Integer(BigInt::from_bytes_be(Sign::Plus, &decoded) + BigInt::from(SMALL_INT_SIZE)), rest)
+                (
+                    Integer(
+                        BigInt::from_bytes_be(Sign::Plus, &decoded) + BigInt::from(SMALL_INT_SIZE),
+                    ),
+                    rest,
+                )
             }
             NEG_BITS => {
                 let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
@@ -237,7 +270,7 @@ impl Value {
                         let (elems, rest) = Self::deserialize_many(n, rest)?;
                         (Tuple(elems), rest)
                     }
-                    None => Err(DeserErr::InvalidTupleSize)?
+                    None => Err(DeserErr::InvalidTupleSize)?,
                 }
             }
             LONG_LIST => {
@@ -248,43 +281,33 @@ impl Value {
                         let (elems, rest) = Self::deserialize_many(n, rest)?;
                         (List(elems), rest)
                     }
-                    None => Err(DeserErr::InvalidListSize)?
+                    None => Err(DeserErr::InvalidListSize)?,
                 }
             }
-            LONG_STRING =>
-                match Self::try_deserialize(&bytes[1..])? {
-                    (Integer(n), rest) if n.is_positive() || n.is_zero() => {
-                        match n.to_usize() {
-                            Some(x) => {
-                                let size = x + SHORT_STRING_SIZE;
-                                (String(rest[..size].to_vec()), &rest[size..])
-                            }
-                            None => Err(DeserErr::InvalidString)?
-                        }
+            LONG_STRING => match Self::try_deserialize(&bytes[1..])? {
+                (Integer(n), rest) if n.is_positive() || n.is_zero() => match n.to_usize() {
+                    Some(x) => {
+                        let size = x + SHORT_STRING_SIZE;
+                        (String(rest[..size].to_vec()), &rest[size..])
                     }
-                    _ => Err(DeserErr::InvalidString)?
-                }
-            CONTRACT_BYTEARRAY =>
-                match Self::try_deserialize(&bytes[1..])? {
-                    (Integer(n), rest) if n.is_positive() || n.is_zero() => {
-                        match n.to_usize() {
-                            Some(size) => {
-                                (ContractBytearray(rest[..size].to_vec()), &rest[size..])
-                            }
-                            None => Err(DeserErr::InvalidContractBytearray)?
-                        }
-                    }
-                    _ => Err(DeserErr::InvalidContractBytearray)?
-                }
-            OBJECT =>
+                    None => Err(DeserErr::InvalidString)?,
+                },
+                _ => Err(DeserErr::InvalidString)?,
+            },
+            CONTRACT_BYTEARRAY => match Self::try_deserialize(&bytes[1..])? {
+                (Integer(n), rest) if n.is_positive() || n.is_zero() => match n.to_usize() {
+                    Some(size) => (ContractBytearray(rest[..size].to_vec()), &rest[size..]),
+                    None => Err(DeserErr::InvalidContractBytearray)?,
+                },
+                _ => Err(DeserErr::InvalidContractBytearray)?,
+            },
+            OBJECT => {
                 if bytes.len() < 3 {
                     Err(DeserErr::InvalidObject)?
-                }
-                else if bytes[1] == OTYPE_BYTES {
+                } else if bytes[1] == OTYPE_BYTES {
                     match Self::try_deserialize(&bytes[2..])? {
                         (String(string), rest) => (Bytes(string), rest),
-                        _ =>
-                            Err(DeserErr::InvalidBytesObject)?
+                        _ => Err(DeserErr::InvalidBytesObject)?,
                     }
                 } else {
                     let (decoded, rest) = rlp_decode_bytes(&bytes[2..])?;
@@ -294,10 +317,11 @@ impl Value {
                         OTYPE_ORACLE => Oracle(decoded),
                         OTYPE_ORACLE_QUERY => OracleQuery(decoded),
                         OTYPE_CHANNEL => Channel(decoded),
-                        invalid => Err(DeserErr::InvalidObjectByte(invalid))?
+                        invalid => Err(DeserErr::InvalidObjectByte(invalid))?,
                     };
                     (value, rest)
                 }
+            }
             MAP => {
                 let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
                 match BigUint::from_bytes_be(&decoded).to_usize() {
@@ -309,14 +333,20 @@ impl Value {
                         }
                         (Map(map), new_rest)
                     }
-                    None => Err(DeserErr::InvalidMapSize)?
+                    None => Err(DeserErr::InvalidMapSize)?,
                 }
             }
             MAP_ID => {
                 let (decoded, rest) = rlp_decode_bytes(&bytes[1..])?;
                 match BigUint::from_bytes_be(&decoded).to_u32() {
-                    Some(id) => (StoreMap { cache: BTreeMap::new(), id }, rest),
-                    None => Err(DeserErr::InvalidMapId)?
+                    Some(id) => (
+                        StoreMap {
+                            cache: BTreeMap::new(),
+                            id,
+                        },
+                        rest,
+                    ),
+                    None => Err(DeserErr::InvalidMapId)?,
                 }
             }
             VARIANT => {
@@ -332,12 +362,19 @@ impl Value {
                         (Tuple(elems), new_rest) => {
                             let arity = arities[tag as usize];
                             if arity as usize == elems.len() {
-                                (Variant { arities, tag, values: elems }, new_rest)
+                                (
+                                    Variant {
+                                        arities,
+                                        tag,
+                                        values: elems,
+                                    },
+                                    new_rest,
+                                )
                             } else {
                                 Err(DeserErr::TagDoesNotMatchTypeInVariant)?
                             }
                         }
-                        _ => Err(DeserErr::BadVariant)?
+                        _ => Err(DeserErr::BadVariant)?,
                     }
                 }
             }
@@ -358,7 +395,7 @@ impl Value {
                 let (val, rest) = Self::deserialize_many(size, &bytes[1..])?;
                 (Tuple(val), rest)
             }
-            tag if is_short_list(tag)  => {
+            tag if is_short_list(tag) => {
                 let size = (tag >> 4) as usize;
                 let (val, rest) = Self::deserialize_many(size, &bytes[1..])?;
                 (List(val), rest)
@@ -367,7 +404,7 @@ impl Value {
                 let (t, rest) = Type::deserialize(bytes)?;
                 (Typerep(t), rest)
             }
-            invalid => Err(DeserErr::InvalidIdByte(invalid))?
+            invalid => Err(DeserErr::InvalidIdByte(invalid))?,
         };
 
         Ok(res)
@@ -399,12 +436,12 @@ impl Value {
             Tuple(_) => 9,
             Map(_) => 10,
             List(_) => 11,
-            Variant{..} => 12,
+            Variant { .. } => 12,
             OracleQuery(_) => 13,
             ContractBytearray(_) => 14,
             // TODO: Set the ordinal for the following types
             Typerep(_) => panic!("Typerep should not be compared"),
-            StoreMap{..} => panic!("Storemap should not be compared"),
+            StoreMap { .. } => panic!("Storemap should not be compared"),
         }
     }
 }
@@ -416,9 +453,7 @@ fn serialize_address_object(address: &Bytes, object_id: u8) -> Bytes {
 }
 
 fn rlp_decode_bytes(bytes: &[u8]) -> Result<(Bytes, &[u8]), DeserErr> {
-    let (item, rest) = RlpItem::try_deserialize(bytes)
-        .map_err(|e| DeserErr::RlpErr(e))?;
-    let decoded = Vec::<u8>::from_rlp_item(&item)
-        .map_err(|e| DeserErr::ExternalErr(e))?;
+    let (item, rest) = RlpItem::try_deserialize(bytes).map_err(|e| DeserErr::RlpErr(e))?;
+    let decoded = Vec::<u8>::from_rlp_item(&item).map_err(|e| DeserErr::ExternalErr(e))?;
     Ok((decoded, rest))
 }

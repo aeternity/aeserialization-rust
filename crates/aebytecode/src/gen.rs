@@ -1,12 +1,15 @@
 use std::{fmt, iter};
 
-use serde::{Deserialize, de::{self, Visitor, MapAccess}, Deserializer};
+use serde::{
+    de::{self, MapAccess, Visitor},
+    Deserialize, Deserializer,
+};
 
 use crate::data::types;
 
 #[derive(Debug, Deserialize)]
 struct Instructions {
-    instruction: Vec<Instruction>
+    instruction: Vec<Instruction>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -27,10 +30,7 @@ struct Instruction {
 #[derive(Debug)]
 enum Gas {
     Same(u64),
-    Changed {
-        iris: u64,
-        lima: u64,
-    }
+    Changed { iris: u64, lima: u64 },
 }
 
 impl<'de> Deserialize<'de> for Gas {
@@ -64,9 +64,11 @@ impl<'de> Deserialize<'de> for Gas {
             {
                 let err_msg = "iris and lima must both be present";
 
-                let entry1 = map.next_entry::<String, u64>()?
+                let entry1 = map
+                    .next_entry::<String, u64>()?
                     .ok_or_else(|| de::Error::custom(err_msg))?;
-                let entry2 = map.next_entry::<String, u64>()?
+                let entry2 = map
+                    .next_entry::<String, u64>()?
                     .ok_or_else(|| de::Error::custom(err_msg))?;
 
                 let (lima, iris) = {
@@ -89,10 +91,8 @@ impl<'de> Deserialize<'de> for Gas {
 
 pub fn generate_instructions_enum() -> std::io::Result<()> {
     let instructions: Instructions = {
-        let contents = std::fs::read_to_string("fate.toml")
-            .expect("File not found");
-        let mut instrs: Instructions = toml::from_str(&contents)
-            .expect("Failed to deserialize");
+        let contents = std::fs::read_to_string("fate.toml").expect("File not found");
+        let mut instrs: Instructions = toml::from_str(&contents).expect("Failed to deserialize");
         for instr in &mut instrs.instruction {
             instr.opname = change_case::pascal_case(instr.opname.as_str());
         }
@@ -112,7 +112,15 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
         if i.arg_types.is_empty() {
             file += format!("    {},\n", i.opname).as_str();
         } else {
-            file += format!("    {}({}),\n", i.opname, iter::repeat("Arg").take(i.arg_types.len()).collect::<Vec<&str>>().join(", ")).as_str();
+            file += format!(
+                "    {}({}),\n",
+                i.opname,
+                iter::repeat("Arg")
+                    .take(i.arg_types.len())
+                    .collect::<Vec<&str>>()
+                    .join(", ")
+            )
+            .as_str();
         }
     }
     file += "}\n";
@@ -125,7 +133,15 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
         if i.arg_types.is_empty() {
             file += format!("            {}", i.opname).as_str();
         } else {
-            file += format!("            {}({})", i.opname, iter::repeat("_").take(i.arg_types.len()).collect::<Vec<&str>>().join(", ")).as_str();
+            file += format!(
+                "            {}({})",
+                i.opname,
+                iter::repeat("_")
+                    .take(i.arg_types.len())
+                    .collect::<Vec<&str>>()
+                    .join(", ")
+            )
+            .as_str();
         }
         file += format!(" => {:#x},\n", i.opcode).as_str();
     }
@@ -140,9 +156,26 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
         if i.arg_types.is_empty() {
             file += format!("            {}", i.opname).as_str();
         } else {
-            file += format!("            {}({})", i.opname, (1..).map(|i| format!("a{i}")).take(i.arg_types.len()).collect::<Vec<String>>().join(", ")).as_str();
+            file += format!(
+                "            {}({})",
+                i.opname,
+                (1..)
+                    .map(|i| format!("a{i}"))
+                    .take(i.arg_types.len())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            )
+            .as_str();
         }
-        file += format!(" => vec![{}],\n", (1..).map(|i| format!("a{i}.clone()")).take(i.arg_types.len()).collect::<Vec<String>>().join(", ")).as_str();
+        file += format!(
+            " => vec![{}],\n",
+            (1..)
+                .map(|i| format!("a{i}.clone()"))
+                .take(i.arg_types.len())
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+        .as_str();
     }
     file += "        }\n";
     file += "    }\n";

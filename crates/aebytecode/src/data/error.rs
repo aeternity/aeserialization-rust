@@ -1,4 +1,4 @@
-use aeser::{rlp, error, Bytes};
+use aeser::{error, rlp, Bytes};
 
 use super::value::Value;
 
@@ -11,7 +11,7 @@ pub enum SerErr {
     HeteroMapValues,
     ArityValuesMismatch,
     TupleSizeLimitExceeded,
-    VariantSizeLimitExceeded
+    VariantSizeLimitExceeded,
 }
 
 #[derive(Debug)]
@@ -28,7 +28,7 @@ pub enum DeserErr {
     Trailing {
         input: Bytes,
         undecoded: Bytes,
-        decoded: Value
+        decoded: Value,
     },
     InvalidIntValue,
     InvalidBytesType,
