@@ -109,14 +109,14 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
     file += "#[derive(Debug)]\n";
     file += "pub enum Instruction {\n";
     for i in &instructions.instruction {
-        if i.arg_types.is_empty() {
+        if i.format.is_empty() {
             file += format!("    {},\n", i.opname).as_str();
         } else {
             file += format!(
                 "    {}({}),\n",
                 i.opname,
                 iter::repeat("Arg")
-                    .take(i.arg_types.len())
+                    .take(i.format.len())
                     .collect::<Vec<&str>>()
                     .join(", ")
             )
@@ -130,14 +130,14 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
     file += "        use Instruction::*;\n";
     file += "        match self {\n";
     for i in &instructions.instruction {
-        if i.arg_types.is_empty() {
+        if i.format.is_empty() {
             file += format!("            {}", i.opname).as_str();
         } else {
             file += format!(
                 "            {}({})",
                 i.opname,
                 iter::repeat("_")
-                    .take(i.arg_types.len())
+                    .take(i.format.len())
                     .collect::<Vec<&str>>()
                     .join(", ")
             )
@@ -153,7 +153,7 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
     file += "        use Instruction::*;\n";
     file += "        match self {\n";
     for i in &instructions.instruction {
-        if i.arg_types.is_empty() {
+        if i.format.is_empty() {
             file += format!("            {}", i.opname).as_str();
         } else {
             file += format!(
@@ -161,7 +161,7 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
                 i.opname,
                 (1..)
                     .map(|i| format!("a{i}"))
-                    .take(i.arg_types.len())
+                    .take(i.format.len())
                     .collect::<Vec<String>>()
                     .join(", ")
             )
@@ -171,7 +171,7 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
             " => vec![{}],\n",
             (1..)
                 .map(|i| format!("a{i}.clone()"))
-                .take(i.arg_types.len())
+                .take(i.format.len())
                 .collect::<Vec<String>>()
                 .join(", ")
         )
