@@ -121,6 +121,15 @@ impl Serializable for Vec<Instruction> {
         Ok(ser)
     }
 }
+impl Serializable for Vec<Vec<Instruction>> {
+    fn serialize(&self) -> Result<Bytes, SerErr> {
+        let mut ser = Vec::new();
+        for instr in self {
+            ser.extend(instr.serialize()?);
+        }
+        Ok(ser)
+    }
+}
 impl Serializable for Arg {
     fn serialize(&self) -> Result<Bytes, SerErr> {
         match self {
@@ -188,7 +197,7 @@ struct Function {
     id: Id,
     attributes: Attributes,
     type_sig: TypeSig,
-    instructions: Vec<Instruction>,
+    instructions: Vec<Vec<Instruction>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -266,7 +275,7 @@ mod test {
     }
 
     fn arb_instruction() -> impl Strategy<Value = Instruction> {
-        any::<u32>().prop_map(|_x| Instruction::Address)
+        any::<u32>().prop_map(|_x| Instruction::Return)
     }
 
     fn arb_typesig() -> impl Strategy<Value = TypeSig> {
@@ -516,7 +525,7 @@ mod test {
                     }),
                 },
             },
-            instructions: vec![Instruction::Returnr(Arg::Immediate(Value::Map(map)))],
+            instructions: vec![vec![Instruction::Returnr(Arg::Immediate(Value::Map(map)))]],
         };
 
         let fun_name = "map";
