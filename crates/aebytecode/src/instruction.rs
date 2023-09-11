@@ -7,7 +7,7 @@ pub enum AddressingMode {
         high: u8,
     }
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Instruction {
     Return,
     Returnr(Arg),

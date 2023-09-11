@@ -214,7 +214,7 @@ pub struct TypeSig {
     ret: Type,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Arg {
     Stack(u32),
     Arg(u32),
