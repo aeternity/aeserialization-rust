@@ -159,25 +159,25 @@ impl Serializable for AddressingMode {
 }
 
 #[derive(Debug)]
-struct Contract {
-    code: Code,
-    symbols: Symbols,
-    annotations: Vec<Annotation>,
+pub struct Contract {
+    pub code: Code,
+    pub symbols: Symbols,
+    pub annotations: Vec<Annotation>,
 }
 
 #[derive(Debug)]
-struct Code {
+pub struct Code {
     // TODO: no need to store as map? map is only needed for sorting?
     functions: BTreeMap<Bytes, Function>,
 }
 
 #[derive(Debug)]
-struct Symbols {
+pub struct Symbols {
     symbols: BTreeMap<Bytes, String>,
 }
 
 #[derive(Debug)]
-enum Annotation {
+pub enum Annotation {
     Comment { line: u32, comment: String },
 }
 
@@ -193,15 +193,15 @@ impl Id {
 }
 
 #[derive(Debug)]
-struct Function {
-    id: Id,
-    attributes: Attributes,
-    type_sig: TypeSig,
-    instructions: Vec<Vec<Instruction>>,
+pub struct Function {
+    pub id: Id,
+    pub attributes: Attributes,
+    pub type_sig: TypeSig,
+    pub instructions: Vec<Vec<Instruction>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum Attributes {
+pub enum Attributes {
     None = 0,
     Private = 1,
     Payable = 2,
@@ -209,7 +209,7 @@ enum Attributes {
 }
 
 #[derive(Debug)]
-struct TypeSig {
+pub struct TypeSig {
     args: Vec<Type>,
     ret: Type,
 }
@@ -502,7 +502,7 @@ mod test {
             Value::String("bar".as_bytes().to_vec()),
             Value::Boolean(false),
         );
-        let mut map2 = BTreeMap::new();
+        let map2 = BTreeMap::new();
         let mut map3 = BTreeMap::new();
         map3.insert(
             Value::String("foo".as_bytes().to_vec()),
