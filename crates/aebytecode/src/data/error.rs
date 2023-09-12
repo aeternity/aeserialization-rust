@@ -12,6 +12,7 @@ pub enum SerErr {
     ArityValuesMismatch,
     TupleSizeLimitExceeded,
     VariantSizeLimitExceeded,
+    DuplicateFunctionName,
 }
 
 #[derive(Debug)]
@@ -46,4 +47,11 @@ pub enum DeserErr {
     BadVariant,
     TagDoesNotMatchTypeInVariant,
     CalldataDecodeErr,
+    BadSymbolsTable,
+    BadString,
+    BadAttributes,
+    BadRlpItem,
+    BadAnnotation,
+    Failed,
+    BadTypeSig,
 }
