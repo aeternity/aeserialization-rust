@@ -1,7 +1,7 @@
 mod utils;
 
 use wasm_bindgen::prelude::*;
-use aeserialization::id::Id;
+use aeser::api_encoder::{ decode_id, KnownType};
 
 #[wasm_bindgen]
 extern "C" {
@@ -15,7 +15,6 @@ pub fn greet() {
 
 #[wasm_bindgen]
 pub fn decode(s: String) -> String {
-    use aeserialization::api_encoder::{ decode_id, KnownType};
     use web_sys::console;
     let kt = KnownType::AccountPubkey;
     let dec = decode_id(&[kt], &s);

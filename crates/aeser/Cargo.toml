@@ -1,11 +1,11 @@
 [package]
-name = "aeserialization"
+name = "aeser"
 edition.workspace = true
 version.workspace = true
 
 # The [lib] section seems to break WASM compilation
 #[lib]
-#name = "aeserialization"
+#name = "aeser"
 #crate-type = ["cdylib", "rlib"]
 #proc-macro = true
 
