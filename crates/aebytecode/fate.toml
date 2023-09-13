@@ -1,0 +1,2471 @@
+[[instruction]]
+opname = "RETURN"
+opcode = 0x00
+end_bb = true
+in_auth = true
+offchain = true
+gas = 10
+format = []
+constructor = "return"
+arg_types = []
+res_type = "any"
+documentation = "Return from function call, top of stack is return value . The type of the retun value has to match the return type of the function."
+
+[[instruction]]
+opname = "RETURNR"
+opcode = 0x01
+end_bb = true
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "returnr"
+arg_types = ["any"]
+res_type = "any"
+documentation = "Push Arg0 and return from function. The type of the retun value has to match the return type of the function."
+
+[[instruction]]
+opname = "CALL"
+opcode = 0x02
+end_bb = true
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "call"
+arg_types = ["string"]
+res_type = "any"
+documentation = "Call the function Arg0 with args on stack. The types of the arguments has to match the argument typs of the function."
+
+[[instruction]]
+opname = "CALL_R"
+opcode = 0x03
+end_bb = true
+in_auth = false
+offchain = true
+gas = 100
+format = ["a","is","a","a","a"]
+constructor = "call_r"
+arg_types = ["contract","string","typerep","typerep","integer"]
+res_type = "any"
+documentation = "Remote call to contract Arg0 and function Arg1 of type Arg2 => Arg3 with value Arg4. The types of the arguments has to match the argument types of the function."
+
+[[instruction]]
+opname = "CALL_T"
+opcode = 0x04
+end_bb = true
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "call_t"
+arg_types = ["string"]
+res_type = "any"
+documentation = "Tail call to function Arg0. The types of the arguments has to match the argument typs of the function. And the return type of the called function has to match the type of the current function."
+
+[[instruction]]
+opname = "CALL_GR"
+opcode = 0x05
+end_bb = true
+in_auth = false
+offchain = true
+gas = 100
+format = ["a","is","a","a","a","a"]
+constructor = "call_gr"
+arg_types = ["contract","string","typerep","typerep","integer","integer"]
+res_type = "any"
+documentation = "Remote call with gas cap in Arg4. Otherwise as CALL_R."
+
+[[instruction]]
+opname = "JUMP"
+opcode = 0x06
+end_bb = true
+in_auth = true
+offchain = true
+gas = 10
+format = ["ii"]
+constructor = "jump"
+arg_types = ["integer"]
+res_type = "none"
+documentation = "Jump to a basic block. The basic block has to exist in the current function."
+
+[[instruction]]
+opname = "JUMPIF"
+opcode = 0x07
+end_bb = true
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","ii"]
+constructor = "jumpif"
+arg_types = ["boolean","integer"]
+res_type = "none"
+documentation = "Conditional jump to a basic block. If Arg0 then jump to Arg1."
+
+[[instruction]]
+opname = "SWITCH_V2"
+opcode = 0x08
+end_bb = true
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","ii","ii"]
+constructor = "switch"
+arg_types = ["variant","integer","integer"]
+res_type = "none"
+documentation = "Conditional jump to a basic block on variant tag."
+
+[[instruction]]
+opname = "SWITCH_V3"
+opcode = 0x09
+end_bb = true
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","ii","ii","ii"]
+constructor = "switch"
+arg_types = ["variant","integer","integer","integer"]
+res_type = "none"
+documentation = "Conditional jump to a basic block on variant tag."
+
+[[instruction]]
+opname = "SWITCH_VN"
+opcode = 0x0a
+end_bb = true
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","li"]
+constructor = "switch"
+arg_types = ["variant",["list","integer"]]
+res_type = "none"
+documentation = "Conditional jump to a basic block on variant tag."
+
+[[instruction]]
+opname = "CALL_VALUE"
+opcode = 0x0b
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "call_value"
+arg_types = []
+res_type = "integer"
+documentation = "The value sent in the current remote call."
+
+[[instruction]]
+opname = "PUSH"
+opcode = 0x0c
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "push"
+arg_types = ["any"]
+res_type = "any"
+documentation = "Push argument to stack."
+
+[[instruction]]
+opname = "DUPA"
+opcode = 0x0d
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = []
+constructor = "dup"
+arg_types = ["any"]
+res_type = "any"
+documentation = "Duplicate top of stack."
+
+[[instruction]]
+opname = "DUP"
+opcode = 0x0e
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "dup"
+arg_types = ["any"]
+res_type = "any"
+documentation = "push Arg0 stack pos on top of stack."
+
+[[instruction]]
+opname = "POP"
+opcode = 0x0f
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "pop"
+arg_types = ["integer"]
+res_type = "integer"
+documentation = "Arg0 := top of stack."
+
+[[instruction]]
+opname = "INCA"
+opcode = 0x10
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = []
+constructor = "inc"
+arg_types = ["integer"]
+res_type = "integer"
+documentation = "Increment accumulator."
+
+[[instruction]]
+opname = "INC"
+opcode = 0x11
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "inc"
+arg_types = ["integer"]
+res_type = "integer"
+documentation = "Increment argument."
+
+[[instruction]]
+opname = "DECA"
+opcode = 0x12
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = []
+constructor = "dec"
+arg_types = ["integer"]
+res_type = "integer"
+documentation = "Decrement accumulator."
+
+[[instruction]]
+opname = "DEC"
+opcode = 0x13
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "dec"
+arg_types = ["integer"]
+res_type = "integer"
+documentation = "Decrement argument."
+
+[[instruction]]
+opname = "ADD"
+opcode = 0x14
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "add"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := Arg1 + Arg2."
+
+[[instruction]]
+opname = "SUB"
+opcode = 0x15
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "sub"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := Arg1 - Arg2."
+
+[[instruction]]
+opname = "MUL"
+opcode = 0x16
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "mul"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := Arg1 * Arg2."
+
+[[instruction]]
+opname = "DIV"
+opcode = 0x17
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "divide"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := Arg1 / Arg2."
+
+[[instruction]]
+opname = "MOD"
+opcode = 0x18
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "modulo"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := Arg1 mod Arg2."
+
+[[instruction]]
+opname = "POW"
+opcode = 0x19
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "pow"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := Arg1  ^ Arg2."
+
+[[instruction]]
+opname = "STORE"
+opcode = 0x1a
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "store"
+arg_types = ["any"]
+res_type = "any"
+documentation = "Arg0 := Arg1."
+
+[[instruction]]
+opname = "SHA3"
+opcode = 0x1b
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "sha3"
+arg_types = ["any"]
+res_type = "hash"
+documentation = "Arg0 := sha3(Arg1)."
+
+[[instruction]]
+opname = "SHA256"
+opcode = 0x1c
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "sha256"
+arg_types = ["any"]
+res_type = "hash"
+documentation = "Arg0 := sha256(Arg1)."
+
+[[instruction]]
+opname = "BLAKE2B"
+opcode = 0x1d
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "blake2b"
+arg_types = ["any"]
+res_type = "hash"
+documentation = "Arg0 := blake2b(Arg1)."
+
+[[instruction]]
+opname = "LT"
+opcode = 0x1e
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "lt"
+arg_types = ["integer","integer"]
+res_type = "boolean"
+documentation = "Arg0 := Arg1  < Arg2."
+
+[[instruction]]
+opname = "GT"
+opcode = 0x1f
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "gt"
+arg_types = ["integer","integer"]
+res_type = "boolean"
+documentation = "Arg0 := Arg1  > Arg2."
+
+[[instruction]]
+opname = "EQ"
+opcode = 0x20
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "eq"
+arg_types = ["integer","integer"]
+res_type = "boolean"
+documentation = "Arg0 := Arg1  = Arg2."
+
+[[instruction]]
+opname = "ELT"
+opcode = 0x21
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "elt"
+arg_types = ["integer","integer"]
+res_type = "boolean"
+documentation = "Arg0 := Arg1 =< Arg2."
+
+[[instruction]]
+opname = "EGT"
+opcode = 0x22
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "egt"
+arg_types = ["integer","integer"]
+res_type = "boolean"
+documentation = "Arg0 := Arg1 >= Arg2."
+
+[[instruction]]
+opname = "NEQ"
+opcode = 0x23
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "neq"
+arg_types = ["integer","integer"]
+res_type = "boolean"
+documentation = "Arg0 := Arg1 /= Arg2."
+
+[[instruction]]
+opname = "AND"
+opcode = 0x24
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "and_op"
+arg_types = ["boolean","boolean"]
+res_type = "boolean"
+documentation = "Arg0 := Arg1 and Arg2."
+
+[[instruction]]
+opname = "OR"
+opcode = 0x25
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "or_op"
+arg_types = ["boolean","boolean"]
+res_type = "boolean"
+documentation = "Arg0 := Arg1  or Arg2."
+
+[[instruction]]
+opname = "NOT"
+opcode = 0x26
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "not_op"
+arg_types = ["boolean"]
+res_type = "boolean"
+documentation = "Arg0 := not Arg1."
+
+[[instruction]]
+opname = "TUPLE"
+opcode = 0x27
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","ii"]
+constructor = "tuple"
+arg_types = ["integer"]
+res_type = "tuple"
+documentation = "Arg0 := tuple of size = Arg1. Elements on stack."
+
+[[instruction]]
+opname = "ELEMENT"
+opcode = 0x28
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "element_op"
+arg_types = ["integer","tuple"]
+res_type = "any"
+documentation = "Arg1 := element(Arg2, Arg3)."
+
+[[instruction]]
+opname = "SETELEMENT"
+opcode = 0x29
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a","a"]
+constructor = "setelement"
+arg_types = ["integer","tuple","any"]
+res_type = "tuple"
+documentation = "Arg0 := a new tuple similar to Arg2, but with element number Arg1 replaced by Arg3."
+
+[[instruction]]
+opname = "MAP_EMPTY"
+opcode = 0x2a
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "map_empty"
+arg_types = []
+res_type = "map"
+documentation = "Arg0 := #{}."
+
+[[instruction]]
+opname = "MAP_LOOKUP"
+opcode = 0x2b
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "map_lookup"
+arg_types = ["map","any"]
+res_type = "any"
+documentation = "Arg0 := lookup key Arg2 in map Arg1."
+
+[[instruction]]
+opname = "MAP_LOOKUPD"
+opcode = 0x2c
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a","a"]
+constructor = "map_lookup"
+arg_types = ["map","any","any"]
+res_type = "any"
+documentation = "Arg0 := lookup key Arg2 in map Arg1 if key exists in map otherwise Arg0 := Arg3."
+
+[[instruction]]
+opname = "MAP_UPDATE"
+opcode = 0x2d
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a","a"]
+constructor = "map_update"
+arg_types = ["map","any","any"]
+res_type = "map"
+documentation = "Arg0 := update key Arg2 in map Arg1 with value Arg3."
+
+[[instruction]]
+opname = "MAP_DELETE"
+opcode = 0x2e
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "map_delete"
+arg_types = ["map","any"]
+res_type = "map"
+documentation = "Arg0 := delete key Arg2 from map Arg1."
+
+[[instruction]]
+opname = "MAP_MEMBER"
+opcode = 0x2f
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "map_member"
+arg_types = ["map","any"]
+res_type = "boolean"
+documentation = "Arg0 := true if key Arg2 is in map Arg1."
+
+[[instruction]]
+opname = "MAP_FROM_LIST"
+opcode = 0x30
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "map_from_list"
+arg_types = [["list",["tuple",["any","any"]]]]
+res_type = "map"
+documentation = "Arg0 := make a map from (key, value) list in Arg1."
+
+[[instruction]]
+opname = "MAP_SIZE"
+opcode = 0x31
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "map_size_"
+arg_types = ["map"]
+res_type = "integer"
+documentation = "Arg0 := The size of the map Arg1."
+
+[[instruction]]
+opname = "MAP_TO_LIST"
+opcode = 0x32
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "map_to_list"
+arg_types = ["map"]
+res_type = "list"
+documentation = "Arg0 := The tuple list representation of the map Arg1."
+
+[[instruction]]
+opname = "IS_NIL"
+opcode = 0x33
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "is_nil"
+arg_types = ["list"]
+res_type = "boolean"
+documentation = "Arg0 := true if Arg1 == []."
+
+[[instruction]]
+opname = "CONS"
+opcode = 0x34
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "cons"
+arg_types = ["any","list"]
+res_type = "list"
+documentation = "Arg0 := [Arg1|Arg2]."
+
+[[instruction]]
+opname = "HD"
+opcode = 0x35
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "hd"
+arg_types = ["list"]
+res_type = "any"
+documentation = "Arg0 := head of list Arg1."
+
+[[instruction]]
+opname = "TL"
+opcode = 0x36
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "tl"
+arg_types = ["list"]
+res_type = "list"
+documentation = "Arg0 := tail of list Arg1."
+
+[[instruction]]
+opname = "LENGTH"
+opcode = 0x37
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "length"
+arg_types = ["list"]
+res_type = "integer"
+documentation = "Arg0 := length of list Arg1."
+
+[[instruction]]
+opname = "NIL"
+opcode = 0x38
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "nil"
+arg_types = []
+res_type = "list"
+documentation = "Arg0 := []."
+
+[[instruction]]
+opname = "APPEND"
+opcode = 0x39
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "append"
+arg_types = ["list","list"]
+res_type = "list"
+documentation = "Arg0 := Arg1 ++ Arg2."
+
+[[instruction]]
+opname = "STR_JOIN"
+opcode = 0x3a
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "str_join"
+arg_types = ["string","string"]
+res_type = "string"
+documentation = "Arg0 := string Arg1 followed by string Arg2."
+
+[[instruction]]
+opname = "INT_TO_STR"
+opcode = 0x3b
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "int_to_str"
+arg_types = ["integer"]
+res_type = "string"
+documentation = "Arg0 := turn integer Arg1 into a string."
+
+[[instruction]]
+opname = "ADDR_TO_STR"
+opcode = 0x3c
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "addr_to_str"
+arg_types = ["address"]
+res_type = "string"
+documentation = "Arg0 := turn address Arg1 into a string."
+
+[[instruction]]
+opname = "STR_REVERSE"
+opcode = 0x3d
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "str_reverse"
+arg_types = ["string"]
+res_type = "string"
+documentation = "Arg0 := the reverse of string Arg1."
+
+[[instruction]]
+opname = "STR_LENGTH"
+opcode = 0x3e
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "str_length"
+arg_types = ["string"]
+res_type = "integer"
+documentation = "Arg0 := The length of the string Arg1."
+
+[[instruction]]
+opname = "BYTES_TO_INT"
+opcode = 0x3f
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "bytes_to_int"
+arg_types = ["bytes"]
+res_type = "integer"
+documentation = "Arg0 := bytes_to_int(Arg1)"
+
+[[instruction]]
+opname = "BYTES_TO_STR"
+opcode = 0x40
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "bytes_to_str"
+arg_types = ["bytes"]
+res_type = "string"
+documentation = "Arg0 := bytes_to_str(Arg1)"
+
+[[instruction]]
+opname = "BYTES_CONCAT"
+opcode = 0x41
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bytes_concat"
+arg_types = ["bytes","bytes"]
+res_type = "bytes"
+documentation = "Arg0 := bytes_concat(Arg1, Arg2)"
+
+[[instruction]]
+opname = "BYTES_SPLIT"
+opcode = 0x42
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bytes_split"
+arg_types = ["bytes","integer"]
+res_type = "bytes"
+documentation = "Arg0 := bytes_split(Arg2, Arg1), where Arg2 is the length of the first chunk."
+
+[[instruction]]
+opname = "INT_TO_ADDR"
+opcode = 0x43
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "int_to_addr"
+arg_types = ["integer"]
+res_type = "address"
+documentation = "Arg0 := turn integer Arg1 into an address."
+
+[[instruction]]
+opname = "VARIANT"
+opcode = 0x44
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a","a"]
+constructor = "variant"
+arg_types = ["integer","integer","integer"]
+res_type = "variant"
+documentation = "Arg0 := create a variant of size Arg1 with the tag Arg2 (Arg2 < Arg1) and take Arg3 elements from the stack."
+
+[[instruction]]
+opname = "VARIANT_TEST"
+opcode = 0x45
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "variant_test"
+arg_types = ["variant","integer"]
+res_type = "boolean"
+documentation = "Arg0 := true if variant Arg1 has the tag Arg2."
+
+[[instruction]]
+opname = "VARIANT_ELEMENT"
+opcode = 0x46
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "variant_element"
+arg_types = ["variant","integer"]
+res_type = "any"
+documentation = "Arg0 := element number Arg2 from variant Arg1."
+
+[[instruction]]
+opname = "BITS_NONEA"
+opcode = 0x47
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = []
+constructor = "bits_none"
+arg_types = []
+res_type = "bits"
+documentation = "push an empty bitmap on the stack."
+
+[[instruction]]
+opname = "BITS_NONE"
+opcode = 0x48
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "bits_none"
+arg_types = []
+res_type = "bits"
+documentation = "Arg0 := empty bitmap."
+
+[[instruction]]
+opname = "BITS_ALLA"
+opcode = 0x49
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = []
+constructor = "bits_all"
+arg_types = []
+res_type = "bits"
+documentation = "push a full bitmap on the stack."
+
+[[instruction]]
+opname = "BITS_ALL"
+opcode = 0x4a
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "bits_all"
+arg_types = []
+res_type = "bits"
+documentation = "Arg0 := full bitmap."
+
+[[instruction]]
+opname = "BITS_ALL_N"
+opcode = 0x4b
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "bits_all_n"
+arg_types = ["integer"]
+res_type = "bits"
+documentation = "Arg0 := bitmap with Arg1 bits set."
+
+[[instruction]]
+opname = "BITS_SET"
+opcode = 0x4c
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bits_set"
+arg_types = ["bits","integer"]
+res_type = "bits"
+documentation = "Arg0 := set bit Arg2 of bitmap Arg1."
+
+[[instruction]]
+opname = "BITS_CLEAR"
+opcode = 0x4d
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bits_clear"
+arg_types = ["bits","integer"]
+res_type = "bits"
+documentation = "Arg0 := clear bit Arg2 of bitmap Arg1."
+
+[[instruction]]
+opname = "BITS_TEST"
+opcode = 0x4e
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bits_test"
+arg_types = ["bits","integer"]
+res_type = "boolean"
+documentation = "Arg0 := true if bit Arg2 of bitmap Arg1 is set."
+
+[[instruction]]
+opname = "BITS_SUM"
+opcode = 0x4f
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "bits_sum"
+arg_types = ["bits"]
+res_type = "integer"
+documentation = "Arg0 := sum of set bits in bitmap Arg1. Exception if infinit bitmap."
+
+[[instruction]]
+opname = "BITS_OR"
+opcode = 0x50
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bits_or"
+arg_types = ["bits","bits"]
+res_type = "bits"
+documentation = "Arg0 := Arg1 v Arg2."
+
+[[instruction]]
+opname = "BITS_AND"
+opcode = 0x51
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bits_and"
+arg_types = ["bits","bits"]
+res_type = "bits"
+documentation = "Arg0 := Arg1 ^ Arg2."
+
+[[instruction]]
+opname = "BITS_DIFF"
+opcode = 0x52
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bits_diff"
+arg_types = ["bits","bits"]
+res_type = "bits"
+documentation = "Arg0 := Arg1 - Arg2."
+
+[[instruction]]
+opname = "BALANCE"
+opcode = 0x53
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "balance"
+arg_types = []
+res_type = "integer"
+documentation = "Arg0 := The current contract balance."
+
+[[instruction]]
+opname = "ORIGIN"
+opcode = 0x54
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "origin"
+arg_types = []
+res_type = "address"
+documentation = "Arg0 := Address of contract called by the call transaction."
+
+[[instruction]]
+opname = "CALLER"
+opcode = 0x55
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "caller"
+arg_types = []
+res_type = "address"
+documentation = "Arg0 := The address that signed the call transaction."
+
+[[instruction]]
+opname = "BLOCKHASH"
+opcode = 0x56
+end_bb = false
+in_auth = true
+offchain = true
+gas = {iris = 1000, lima = 10}
+format = ["a","a"]
+constructor = "blockhash"
+arg_types = ["integer"]
+res_type = "variant"
+documentation = "Arg0 := The blockhash at height."
+
+[[instruction]]
+opname = "BENEFICIARY"
+opcode = 0x57
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "beneficiary"
+arg_types = []
+res_type = "address"
+documentation = "Arg0 := The address of the current beneficiary."
+
+[[instruction]]
+opname = "TIMESTAMP"
+opcode = 0x58
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "timestamp"
+arg_types = []
+res_type = "integer"
+documentation = "Arg0 := The current timestamp. Unrelaiable, don't use for anything."
+
+[[instruction]]
+opname = "GENERATION"
+opcode = 0x59
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "generation"
+arg_types = []
+res_type = "integer"
+documentation = "Arg0 := The block height of the cureent generation."
+
+[[instruction]]
+opname = "MICROBLOCK"
+opcode = 0x5a
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "microblock"
+arg_types = []
+res_type = "integer"
+documentation = "Arg0 := The current micro block number."
+
+[[instruction]]
+opname = "DIFFICULTY"
+opcode = 0x5b
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "difficulty"
+arg_types = []
+res_type = "integer"
+documentation = "Arg0 := The current difficulty."
+
+[[instruction]]
+opname = "GASLIMIT"
+opcode = 0x5c
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "gaslimit"
+arg_types = []
+res_type = "integer"
+documentation = "Arg0 := The current gaslimit."
+
+[[instruction]]
+opname = "GAS"
+opcode = 0x5d
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "gas"
+arg_types = []
+res_type = "integer"
+documentation = "Arg0 := The amount of gas left."
+
+[[instruction]]
+opname = "ADDRESS"
+opcode = 0x5e
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "address"
+arg_types = []
+res_type = "address"
+documentation = "Arg0 := The current contract address."
+
+[[instruction]]
+opname = "GASPRICE"
+opcode = 0x5f
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "gasprice"
+arg_types = []
+res_type = "integer"
+documentation = "Arg0 := The current gas price."
+
+[[instruction]]
+opname = "LOG0"
+opcode = 0x60
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1000
+format = ["a"]
+constructor = "log"
+arg_types = ["string"]
+res_type = "none"
+documentation = "Create a log message in the call object."
+
+[[instruction]]
+opname = "LOG1"
+opcode = 0x61
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1100
+format = ["a","a"]
+constructor = "log"
+arg_types = ["integer","string"]
+res_type = "none"
+documentation = "Create a log message with one topic in the call object."
+
+[[instruction]]
+opname = "LOG2"
+opcode = 0x62
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1200
+format = ["a","a","a"]
+constructor = "log"
+arg_types = ["integer","integer","string"]
+res_type = "none"
+documentation = "Create a log message with two topics in the call object."
+
+[[instruction]]
+opname = "LOG3"
+opcode = 0x63
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1300
+format = ["a","a","a","a"]
+constructor = "log"
+arg_types = ["integer","integer","integer","string"]
+res_type = "none"
+documentation = "Create a log message with three topics in the call object."
+
+[[instruction]]
+opname = "LOG4"
+opcode = 0x64
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1400
+format = ["a","a","a","a","a"]
+constructor = "log"
+arg_types = ["integer","integer","integer","integer","string"]
+res_type = "none"
+documentation = "Create a log message with four topics in the call object."
+
+[[instruction]]
+opname = "SPEND"
+opcode = 0x65
+end_bb = false
+in_auth = false
+offchain = true
+gas = {iris = 5000, lima = 100}
+format = ["a","a"]
+constructor = "spend"
+arg_types = ["address","integer"]
+res_type = "none"
+documentation = "Transfer Arg1 tokens to account Arg0. (If the contract account has at least that many tokens."
+
+[[instruction]]
+opname = "ORACLE_REGISTER"
+opcode = 0x66
+end_bb = false
+in_auth = false
+offchain = false
+gas = {iris = 10000, lima = 100}
+format = ["a","a","a","a","a","a","a"]
+constructor = "oracle_register"
+arg_types = ["signature","address","integer","variant","typerep","typerep"]
+res_type = "oracle"
+documentation = "Arg0 := New oracle with address Arg2, query fee Arg3, TTL Arg4, query type Arg5 and response type Arg6. Arg0 contains delegation signature."
+
+[[instruction]]
+opname = "ORACLE_QUERY"
+opcode = 0x67
+end_bb = false
+in_auth = false
+offchain = false
+gas = {iris = 10000, lima = 100}
+format = ["a","a","a","a","a","a","a","a"]
+constructor = "oracle_query"
+arg_types = ["oracle","any","integer","variant","variant","typerep","typerep"]
+res_type = "oracle_query"
+documentation = "Arg0 := New oracle query for oracle Arg1, question in Arg2, query fee in Arg3, query TTL in Arg4, response TTL in Arg5. Typereps for checking oracle type is in Arg6 and Arg7."
+
+[[instruction]]
+opname = "ORACLE_RESPOND"
+opcode = 0x68
+end_bb = false
+in_auth = false
+offchain = false
+gas = {iris = 10000, lima = 100}
+format = ["a","a","a","a","a","a"]
+constructor = "oracle_respond"
+arg_types = ["signature","oracle","oracle_query","any","typerep","typerep"]
+res_type = "none"
+documentation = "Respond as oracle Arg1 to query in Arg2 with response Arg3. Arg0 contains delegation signature. Typereps for checking oracle type is in Arg4 and Arg5."
+
+[[instruction]]
+opname = "ORACLE_EXTEND"
+opcode = 0x69
+end_bb = false
+in_auth = false
+offchain = false
+gas = {iris = 10000, lima = 100}
+format = ["a","a","a"]
+constructor = "oracle_extend"
+arg_types = ["signature","oracle","variant"]
+res_type = "none"
+documentation = "Extend oracle in Arg1 with TTL in Arg2. Arg0 contains delegation signature."
+
+[[instruction]]
+opname = "ORACLE_GET_ANSWER"
+opcode = 0x6a
+end_bb = false
+in_auth = false
+offchain = true
+gas = {iris = 2000, lima = 100}
+format = ["a","a","a","a","a"]
+constructor = "oracle_get_answer"
+arg_types = ["oracle","oracle_query","typerep","typerep"]
+res_type = "any"
+documentation = "Arg0 := option variant with answer (if any) from oracle query in Arg1 given by oracle Arg0. Typereps for checking oracle type is in Arg3 and Arg4."
+
+[[instruction]]
+opname = "ORACLE_GET_QUESTION"
+opcode = 0x6b
+end_bb = false
+in_auth = false
+offchain = true
+gas = {iris = 2000, lima = 100}
+format = ["a","a","a","a","a"]
+constructor = "oracle_get_question"
+arg_types = ["oracle","oracle_query","typerep","typerep"]
+res_type = "any"
+documentation = "Arg0 := question in oracle query Arg2 given to oracle Arg1. Typereps for checking oracle type is in Arg3 and Arg4."
+
+[[instruction]]
+opname = "ORACLE_QUERY_FEE"
+opcode = 0x6c
+end_bb = false
+in_auth = false
+offchain = true
+gas = {iris = 2000, lima = 100}
+format = ["a","a"]
+constructor = "oracle_query_fee"
+arg_types = ["oracle"]
+res_type = "integer"
+documentation = "Arg0 := query fee for oracle Arg1"
+
+[[instruction]]
+opname = "AENS_RESOLVE"
+opcode = 0x6d
+end_bb = false
+in_auth = false
+offchain = true
+gas = {iris = 2000, lima = 100}
+format = ["a","a","a","a"]
+constructor = "aens_resolve"
+arg_types = ["string","string","typerep"]
+res_type = "variant"
+documentation = "Resolve name in Arg0 with tag Arg1. Arg2 describes the type parameter of the resolved name."
+
+[[instruction]]
+opname = "AENS_PRECLAIM"
+opcode = 0x6e
+end_bb = false
+in_auth = false
+offchain = false
+gas = {iris = 10000, lima = 100}
+format = ["a","a","a"]
+constructor = "aens_preclaim"
+arg_types = ["signature","address","hash"]
+res_type = "none"
+documentation = "Preclaim the hash in Arg2 for address in Arg1. Arg0 contains delegation signature."
+
+[[instruction]]
+opname = "AENS_CLAIM"
+opcode = 0x6f
+end_bb = false
+in_auth = false
+offchain = false
+gas = {iris = 10000, lima = 100}
+format = ["a","a","a","a","a"]
+constructor = "aens_claim"
+arg_types = ["signature","address","string","integer","integer"]
+res_type = "none"
+documentation = "Attempt to claim the name in Arg2 for address in Arg1 at a price in Arg4. Arg3 contains the salt used to hash the preclaim. Arg0 contains delegation signature."
+
+[[instruction]]
+opname = "AENS_UPDATE"
+opcode = 0x70
+end_bb = false
+in_auth = false
+offchain = false
+gas = {iris = 10000, lima = 100}
+format = ["a","a","a","a","a","a"]
+constructor = "aens_update"
+arg_types = ["signature","address","string","variant","variant","variant"]
+res_type = "none"
+documentation = "Updates name in Arg2 for address in Arg1. Arg3 contains optional ttl (of type Chain.ttl), Arg4 contains optional client_ttl (of type int), Arg5 contains optional pointers (of type map(string, pointee))"
+
+[[instruction]]
+opname = "AENS_TRANSFER"
+opcode = 0x71
+end_bb = false
+in_auth = false
+offchain = false
+gas = {iris = 10000, lima = 100}
+format = ["a","a","a","a"]
+constructor = "aens_transfer"
+arg_types = ["signature","address","address","string"]
+res_type = "none"
+documentation = "Transfer ownership of name Arg3 from account Arg1 to Arg2. Arg0 contains delegation signature."
+
+[[instruction]]
+opname = "AENS_REVOKE"
+opcode = 0x72
+end_bb = false
+in_auth = false
+offchain = false
+gas = {iris = 10000, lima = 100}
+format = ["a","a","a"]
+constructor = "aens_revoke"
+arg_types = ["signature","address","string"]
+res_type = "none"
+documentation = "Revoke the name in Arg2 from owner Arg1. Arg0 contains delegation signature."
+
+[[instruction]]
+opname = "BALANCE_OTHER"
+opcode = 0x73
+end_bb = false
+in_auth = true
+offchain = true
+gas = {iris = 2000, lima = 50}
+format = ["a","a"]
+constructor = "balance_other"
+arg_types = ["address"]
+res_type = "integer"
+documentation = "Arg0 := The balance of address Arg1."
+
+[[instruction]]
+opname = "VERIFY_SIG"
+opcode = 0x74
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1300
+format = ["a","a","a","a"]
+constructor = "verify_sig"
+arg_types = ["bytes","address","bytes"]
+res_type = "boolean"
+documentation = "Arg0 := verify_sig(Hash, PubKey, Signature)"
+
+[[instruction]]
+opname = "VERIFY_SIG_SECP256K1"
+opcode = 0x75
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1300
+format = ["a","a","a","a"]
+constructor = "verify_sig_secp256k1"
+arg_types = ["bytes","bytes","bytes"]
+res_type = "boolean"
+documentation = "Arg0 := verify_sig_secp256k1(Hash, PubKey, Signature)"
+
+[[instruction]]
+opname = "CONTRACT_TO_ADDRESS"
+opcode = 0x76
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "contract_to_address"
+arg_types = ["contract"]
+res_type = "address"
+documentation = "Arg0 := Arg1 - A no-op type conversion"
+
+[[instruction]]
+opname = "AUTH_TX_HASH"
+opcode = 0x77
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "auth_tx_hash"
+arg_types = []
+res_type = "variant"
+documentation = "If in GA authentication context return Some(TxHash) otherwise None."
+
+[[instruction]]
+opname = "ORACLE_CHECK"
+opcode = 0x78
+end_bb = false
+in_auth = false
+offchain = true
+gas = 100
+format = ["a","a","a","a"]
+constructor = "oracle_check"
+arg_types = ["oracle","typerep","typerep"]
+res_type = "bool"
+documentation = "Arg0 := is Arg1 an oracle with the given query (Arg2) and response (Arg3) types"
+
+[[instruction]]
+opname = "ORACLE_CHECK_QUERY"
+opcode = 0x79
+end_bb = false
+in_auth = false
+offchain = true
+gas = 100
+format = ["a","a","a","a","a"]
+constructor = "oracle_check_query"
+arg_types = ["oracle","oracle_query","typerep","typerep"]
+res_type = "bool"
+documentation = "Arg0 := is Arg2 a query for the oracle Arg1 with the given types (Arg3, Arg4)"
+
+[[instruction]]
+opname = "IS_ORACLE"
+opcode = 0x7a
+end_bb = false
+in_auth = false
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "is_oracle"
+arg_types = ["address"]
+res_type = "bool"
+documentation = "Arg0 := is Arg1 an oracle"
+
+[[instruction]]
+opname = "IS_CONTRACT"
+opcode = 0x7b
+end_bb = false
+in_auth = false
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "is_contract"
+arg_types = ["address"]
+res_type = "bool"
+documentation = "Arg0 := is Arg1 a contract"
+
+[[instruction]]
+opname = "IS_PAYABLE"
+opcode = 0x7c
+end_bb = false
+in_auth = false
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "is_payable"
+arg_types = ["address"]
+res_type = "bool"
+documentation = "Arg0 := is Arg1 a payable address"
+
+[[instruction]]
+opname = "CREATOR"
+opcode = 0x7d
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "contract_creator"
+arg_types = []
+res_type = "address"
+documentation = "Arg0 := contract creator"
+
+[[instruction]]
+opname = "ECVERIFY_SECP256K1"
+opcode = 0x7e
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1300
+format = ["a","a","a","a"]
+constructor = "ecverify_secp256k1"
+arg_types = ["bytes","bytes","bytes"]
+res_type = "bytes"
+documentation = "Arg0 := ecverify_secp256k1(Hash, Addr, Signature)"
+
+[[instruction]]
+opname = "ECRECOVER_SECP256K1"
+opcode = 0x7f
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1300
+format = ["a","a","a"]
+constructor = "ecrecover_secp256k1"
+arg_types = ["bytes","bytes"]
+res_type = "bytes"
+documentation = "Arg0 := ecrecover_secp256k1(Hash, Signature)"
+
+[[instruction]]
+opname = "ADDRESS_TO_CONTRACT"
+opcode = 0x80
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "address_to_contract"
+arg_types = ["address"]
+res_type = "contract"
+documentation = "Arg0 := Arg1 - A no-op type conversion"
+
+[[instruction]]
+opname = "BLS12_381_G1_NEG"
+opcode = 0x81
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "bls12_381_g1_neg"
+arg_types = ["tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.g1_neg(Arg1) - Negate a G1-value"
+
+[[instruction]]
+opname = "BLS12_381_G1_NORM"
+opcode = 0x82
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "bls12_381_g1_norm"
+arg_types = ["tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.g1_normalize(Arg1) - Normalize a G1-value"
+
+[[instruction]]
+opname = "BLS12_381_G1_VALID"
+opcode = 0x83
+end_bb = false
+in_auth = true
+offchain = true
+gas = 2000
+format = ["a","a"]
+constructor = "bls12_381_g1_valid"
+arg_types = ["tuple"]
+res_type = "bool"
+documentation = "Arg0 := BLS12_381.g1_valid(Arg1) - Check if G1-value is a valid group member"
+
+[[instruction]]
+opname = "BLS12_381_G1_IS_ZERO"
+opcode = 0x84
+end_bb = false
+in_auth = true
+offchain = true
+gas = 30
+format = ["a","a"]
+constructor = "bls12_381_g1_is_zero"
+arg_types = ["tuple"]
+res_type = "bool"
+documentation = "Arg0 := BLS12_381.g1_is_zero(Arg1) - Check if G1-value is zero"
+
+[[instruction]]
+opname = "BLS12_381_G1_ADD"
+opcode = 0x85
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a","a"]
+constructor = "bls12_381_g1_add"
+arg_types = ["tuple","tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.g1_add(Arg1, Arg2) - Add two G1-values"
+
+[[instruction]]
+opname = "BLS12_381_G1_MUL"
+opcode = 0x86
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1000
+format = ["a","a","a"]
+constructor = "bls12_381_g1_mul"
+arg_types = ["tuple","tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.g1_mul(Arg1, Arg2) - Scalar multiplication for a G1-value (Arg1), and an Fr-value"
+
+[[instruction]]
+opname = "BLS12_381_G2_NEG"
+opcode = 0x87
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "bls12_381_g2_neg"
+arg_types = ["tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.g2_neg(Arg1) - Negate a G2-value"
+
+[[instruction]]
+opname = "BLS12_381_G2_NORM"
+opcode = 0x88
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "bls12_381_g2_norm"
+arg_types = ["tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.g2_normalize(Arg1) - Normalize a G2-value"
+
+[[instruction]]
+opname = "BLS12_381_G2_VALID"
+opcode = 0x89
+end_bb = false
+in_auth = true
+offchain = true
+gas = 2000
+format = ["a","a"]
+constructor = "bls12_381_g2_valid"
+arg_types = ["tuple"]
+res_type = "bool"
+documentation = "Arg0 := BLS12_381.g2_valid(Arg1) - Check if G2-value is a valid group member"
+
+[[instruction]]
+opname = "BLS12_381_G2_IS_ZERO"
+opcode = 0x8a
+end_bb = false
+in_auth = true
+offchain = true
+gas = 30
+format = ["a","a"]
+constructor = "bls12_381_g2_is_zero"
+arg_types = ["tuple"]
+res_type = "bool"
+documentation = "Arg0 := BLS12_381.g2_is_zero(Arg1) - Check if G2-value is zero"
+
+[[instruction]]
+opname = "BLS12_381_G2_ADD"
+opcode = 0x8b
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a","a"]
+constructor = "bls12_381_g2_add"
+arg_types = ["tuple","tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.g2_add(Arg1, Arg2) - Add two G2-values"
+
+[[instruction]]
+opname = "BLS12_381_G2_MUL"
+opcode = 0x8c
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1000
+format = ["a","a","a"]
+constructor = "bls12_381_g2_mul"
+arg_types = ["tuple","tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.g2_mul(Arg1, Arg2) - Scalar multiplication for a G2-value (Arg2), and an Fr-value"
+
+[[instruction]]
+opname = "BLS12_381_GT_INV"
+opcode = 0x8d
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "bls12_381_gt_inv"
+arg_types = ["tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.gt_inv(Arg1) - Invert a GT-value"
+
+[[instruction]]
+opname = "BLS12_381_GT_ADD"
+opcode = 0x8e
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a","a"]
+constructor = "bls12_381_gt_add"
+arg_types = ["tuple","tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.gt_add(Arg1, Arg2) - Add two GT-values"
+
+[[instruction]]
+opname = "BLS12_381_GT_MUL"
+opcode = 0x8f
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a","a"]
+constructor = "bls12_381_gt_mul"
+arg_types = ["tuple","tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.gt_mul(Arg1, Arg2) - Multiply two GT-values"
+
+[[instruction]]
+opname = "BLS12_381_GT_POW"
+opcode = 0x90
+end_bb = false
+in_auth = true
+offchain = true
+gas = 2000
+format = ["a","a","a"]
+constructor = "bls12_381_gt_pow"
+arg_types = ["tuple","tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.gt_pow(Arg1, Arg2) - Scalar exponentiation for a GT-value (Arg2), and an Fr-value"
+
+[[instruction]]
+opname = "BLS12_381_GT_IS_ONE"
+opcode = 0x91
+end_bb = false
+in_auth = true
+offchain = true
+gas = 30
+format = ["a","a"]
+constructor = "bls12_381_gt_is_one"
+arg_types = ["tuple"]
+res_type = "bool"
+documentation = "Arg0 := BLS12_381.gt_is_one(Arg1) - Check if a GT value is \"one\""
+
+[[instruction]]
+opname = "BLS12_381_PAIRING"
+opcode = 0x92
+end_bb = false
+in_auth = true
+offchain = true
+gas = 12000
+format = ["a","a","a"]
+constructor = "bls12_381_pairing"
+arg_types = ["tuple","tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.pairing(Arg1, Arg2) - Find the pairing of a G1-value (Arg1) and a G2-value (Arg2)"
+
+[[instruction]]
+opname = "BLS12_381_MILLER_LOOP"
+opcode = 0x93
+end_bb = false
+in_auth = true
+offchain = true
+gas = 5000
+format = ["a","a","a"]
+constructor = "bls12_381_miller_loop"
+arg_types = ["tuple","tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.miller_loop(Arg1, Arg2) - Do the Miller-loop step of pairing for a G1-value (Arg1) and a G2-value (Arg2)"
+
+[[instruction]]
+opname = "BLS12_381_FINAL_EXP"
+opcode = 0x94
+end_bb = false
+in_auth = true
+offchain = true
+gas = 7000
+format = ["a","a"]
+constructor = "bls12_381_final_exp"
+arg_types = ["tuple"]
+res_type = "tuple"
+documentation = "Arg0 := BLS12_381.final_exp(Arg1) - Do the final exponentiation in pairing"
+
+[[instruction]]
+opname = "BLS12_381_INT_TO_FR"
+opcode = 0x95
+end_bb = false
+in_auth = true
+offchain = true
+gas = 30
+format = ["a","a"]
+constructor = "bls12_381_int_to_fr"
+arg_types = ["tuple"]
+res_type = "tuple"
+documentation = "Arg0 := to_montgomery(Arg1) - Convert (Big)integer to montgomery representation (32 bytes)"
+
+[[instruction]]
+opname = "BLS12_381_INT_TO_FP"
+opcode = 0x96
+end_bb = false
+in_auth = true
+offchain = true
+gas = 30
+format = ["a","a"]
+constructor = "bls12_381_int_to_fp"
+arg_types = ["tuple"]
+res_type = "tuple"
+documentation = "Arg0 := to_montgomery(Arg1) - Convert (Big)integer to montgomery representation (48 bytes)"
+
+[[instruction]]
+opname = "BLS12_381_FR_TO_INT"
+opcode = 0x97
+end_bb = false
+in_auth = true
+offchain = true
+gas = 30
+format = ["a","a"]
+constructor = "bls12_381_fr_to_int"
+arg_types = ["tuple"]
+res_type = "tuple"
+documentation = "Arg0 := from_montgomery(Arg1) - Convert montgomery representation (32 bytes) to integer"
+
+[[instruction]]
+opname = "BLS12_381_FP_TO_INT"
+opcode = 0x98
+end_bb = false
+in_auth = true
+offchain = true
+gas = 30
+format = ["a","a"]
+constructor = "bls12_381_fp_to_int"
+arg_types = ["tuple"]
+res_type = "tuple"
+documentation = "Arg0 := from_montgomery(Arg1) - Convert montgomery representation (48 bytes) to integer"
+
+[[instruction]]
+opname = "AENS_LOOKUP"
+opcode = 0x99
+end_bb = false
+in_auth = false
+offchain = true
+gas = 2000
+format = ["a","a"]
+constructor = "aens_lookup"
+arg_types = ["string"]
+res_type = "variant"
+documentation = "Lookup the name of Arg0. Returns option(AENS.name)"
+
+[[instruction]]
+opname = "ORACLE_EXPIRY"
+opcode = 0x9a
+end_bb = false
+in_auth = false
+offchain = true
+gas = 2000
+format = ["a","a"]
+constructor = "oracle_expiry"
+arg_types = ["oracle"]
+res_type = "int"
+documentation = "Arg0 := expiry block for oracle Arg1"
+
+[[instruction]]
+opname = "AUTH_TX"
+opcode = 0x9b
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a"]
+constructor = "auth_tx"
+arg_types = []
+res_type = "variant"
+documentation = "If in GA authentication context return Some(Tx) otherwise None."
+
+[[instruction]]
+opname = "STR_TO_LIST"
+opcode = 0x9c
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "str_to_list"
+arg_types = ["string"]
+res_type = "list"
+documentation = "Arg0 := string converted to list of characters"
+
+[[instruction]]
+opname = "STR_FROM_LIST"
+opcode = 0x9d
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "str_from_list"
+arg_types = ["list"]
+res_type = "string"
+documentation = "Arg0 := string converted from list of characters"
+
+[[instruction]]
+opname = "STR_TO_UPPER"
+opcode = 0x9e
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "str_to_upper"
+arg_types = ["string"]
+res_type = "string"
+documentation = "Arg0 := to_upper(string)"
+
+[[instruction]]
+opname = "STR_TO_LOWER"
+opcode = 0x9f
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "str_to_lower"
+arg_types = ["string"]
+res_type = "string"
+documentation = "Arg0 := to_lower(string)"
+
+[[instruction]]
+opname = "CHAR_TO_INT"
+opcode = 0xa0
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "char_to_int"
+arg_types = ["char"]
+res_type = "int"
+documentation = "Arg0 := integer representation of UTF-8 character"
+
+[[instruction]]
+opname = "CHAR_FROM_INT"
+opcode = 0xa1
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "char_from_int"
+arg_types = ["int"]
+res_type = "variant"
+documentation = "Arg0 := Some(UTF-8 character) from integer if valid, None if not valid."
+
+[[instruction]]
+opname = "CALL_PGR"
+opcode = 0xa2
+end_bb = true
+in_auth = false
+offchain = true
+gas = 100
+format = ["a","is","a","a","a","a","a"]
+constructor = "call_pgr"
+arg_types = ["contract","string","typerep","typerep","integer","integer",
+             "bool"]
+res_type = "variant"
+documentation = "Potentially protected remote call. Arg5 is protected flag, otherwise as CALL_GR."
+
+[[instruction]]
+opname = "CREATE"
+opcode = 0xa3
+end_bb = true
+in_auth = false
+offchain = true
+gas = 10000
+format = ["a","a","a"]
+constructor = "create"
+arg_types = ["contract_bytearray","typerep","integer"]
+res_type = "contract"
+documentation = "Deploys a contract with a bytecode Arg1 and value Arg3. The `init` arguments should be placed on the stack and match the type in Arg2. Writes contract address to the top of the accumulator stack. If an account on the resulting address did exist before the call, the `payable` flag will be updated."
+
+[[instruction]]
+opname = "CLONE"
+opcode = 0xa4
+end_bb = true
+in_auth = false
+offchain = true
+gas = 5000
+format = ["a","a","a","a"]
+constructor = "clone"
+arg_types = ["contract","typerep","integer","bool"]
+res_type = "any"
+documentation = "Clones the contract under Arg1 and deploys it with value of Arg3. The `init` arguments should be placed on the stack and match the type in Arg2. Writes contract (or `None` on fail when protected) to the top of the accumulator stack. Does not copy the existing contract's store - it will be initialized by a fresh call to the `init` function. If an account on the resulting address did exist before the call, the `payable` flag will be updated."
+
+[[instruction]]
+opname = "CLONE_G"
+opcode = 0xa5
+end_bb = true
+in_auth = false
+offchain = true
+gas = 5000
+format = ["a","a","a","a","a"]
+constructor = "clone_g"
+arg_types = ["contract","typerep","integer","integer","bool"]
+res_type = "any"
+documentation = "Like `CLONE` but additionally limits the gas of the `init` call by Arg3"
+
+[[instruction]]
+opname = "BYTECODE_HASH"
+opcode = 0xa6
+end_bb = false
+in_auth = true
+offchain = true
+gas = 100
+format = ["a","a"]
+constructor = "bytecode_hash"
+arg_types = ["contract"]
+res_type = "variant"
+documentation = "Arg0 := hash of the deserialized contract's bytecode under address given in Arg1 (or `None` on fail). Fails on AEVM contracts and contracts deployed before Iris."
+
+[[instruction]]
+opname = "FEE"
+opcode = 0xa7
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "fee"
+arg_types = []
+res_type = "integer"
+documentation = "Arg0 := The fee for the current call tx."
+
+[[instruction]]
+opname = "ADDRESS_TO_BYTES"
+opcode = 0xa8
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "addr_to_bytes"
+arg_types = ["address"]
+res_type = "bytes"
+documentation = "Arg0 := the byte representation of the address"
+
+[[instruction]]
+opname = "POSEIDON"
+opcode = 0xa9
+end_bb = false
+in_auth = true
+offchain = true
+gas = 6000
+format = ["a","a","a"]
+constructor = "poseidon"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := the Poseidon hash of Arg1 and Arg2 - all integers in the BLS12-381 scalar field"
+
+[[instruction]]
+opname = "MULMOD"
+opcode = 0xaa
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a","a"]
+constructor = "mulmod"
+arg_types = ["integer","integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := (Arg1 * Arg2) mod Arg3"
+
+[[instruction]]
+opname = "BAND"
+opcode = 0xab
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bin_and"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := Arg1 & Arg2"
+
+[[instruction]]
+opname = "BOR"
+opcode = 0xac
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bin_or"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := Arg1 | Arg2"
+
+[[instruction]]
+opname = "BXOR"
+opcode = 0xad
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bin_xor"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := Arg1 ^ Arg2"
+
+[[instruction]]
+opname = "BNOT"
+opcode = 0xae
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "bin_not"
+arg_types = ["integer"]
+res_type = "integer"
+documentation = "Arg0 := ~Arg1"
+
+[[instruction]]
+opname = "BSL"
+opcode = 0xaf
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bin_sl"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := Arg1 << Arg2"
+
+[[instruction]]
+opname = "BSR"
+opcode = 0xb0
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bin_sr"
+arg_types = ["integer","integer"]
+res_type = "integer"
+documentation = "Arg0 := Arg1 >> Arg2"
+
+[[instruction]]
+opname = "BYTES_SPLIT_ANY"
+opcode = 0xb1
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bytes_split_any"
+arg_types = ["bytes","integer"]
+res_type = "variant"
+documentation = "Arg0 := bytes_split_any(Arg1, Arg2), where a positive Arg2 is the length of the first chunk, and a negative Arg2 is the length of the second chunk. Returns None if byte array is not long enough."
+
+[[instruction]]
+opname = "BYTES_SIZE"
+opcode = 0xb2
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "bytes_size"
+arg_types = ["bytes"]
+res_type = "integer"
+documentation = "Arg0 := bytes_size(Arg1), returns the number of bytes in the byte array."
+
+[[instruction]]
+opname = "BYTES_TO_FIXED_SIZE"
+opcode = 0xb3
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "bytes_to_fixed_size"
+arg_types = ["bytes","integer"]
+res_type = "variant"
+documentation = "Arg0 := bytes_to_fixed_size(Arg1, Arg2), returns Some(Arg1') if byte_size(Arg1) == Arg2, None otherwise. The type of Arg1' is bytes(Arg2) but the value is unchanged"
+
+[[instruction]]
+opname = "INT_TO_BYTES"
+opcode = 0xb4
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a","a"]
+constructor = "int_to_bytes"
+arg_types = ["integer","integer"]
+res_type = "bytes"
+documentation = "Arg0 := turn integer Arg1 into a byte array (big endian) length Arg2 (truncating if not fit)."
+
+[[instruction]]
+opname = "STR_TO_BYTES"
+opcode = 0xb5
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = ["a","a"]
+constructor = "str_to_bytes"
+arg_types = ["integer"]
+res_type = "bytes"
+documentation = "Arg0 := turn string Arg1 into the corresponding byte array."
+
+[[instruction]]
+opname = "DBG_LOC"
+opcode = 0xb6
+end_bb = false
+in_auth = true
+offchain = true
+gas = 0
+format = ["a","a"]
+constructor = "dbg_loc"
+arg_types = ["string","integer"]
+res_type = "none"
+documentation = "Debug Op: Execution location. Args = {file_name, line_num}"
+
+[[instruction]]
+opname = "DBG_DEF"
+opcode = 0xb7
+end_bb = false
+in_auth = true
+offchain = true
+gas = 0
+format = ["a","a"]
+constructor = "dbg_def"
+arg_types = ["string","any"]
+res_type = "none"
+documentation = "Debug Op: Define a variable. Args = {var_name, register}"
+
+[[instruction]]
+opname = "DBG_UNDEF"
+opcode = 0xb8
+end_bb = false
+in_auth = true
+offchain = true
+gas = 0
+format = ["a","a"]
+constructor = "dbg_undef"
+arg_types = ["string","any"]
+res_type = "none"
+documentation = "Debug Op: Undefine a variable. Args = {var_name, register}"
+
+[[instruction]]
+opname = "DBG_CONTRACT"
+opcode = 0xb9
+end_bb = false
+in_auth = true
+offchain = true
+gas = 0
+format = ["a"]
+constructor = "dbg_contract"
+arg_types = ["string"]
+res_type = "none"
+documentation = "Debug Op: Name the current contract. Args: {contract_name}"
+
+[[instruction]]
+opname = "DEACTIVATE"
+opcode = 0xfa
+end_bb = false
+in_auth = true
+offchain = true
+gas = 10
+format = []
+constructor = "deactivate"
+arg_types = []
+res_type = "none"
+documentation = "Mark the current contract for deactivation."
+
+[[instruction]]
+opname = "ABORT"
+opcode = 0xfb
+end_bb = true
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "abort"
+arg_types = ["string"]
+res_type = "none"
+documentation = "Abort execution (dont use all gas) with error message in Arg0."
+
+[[instruction]]
+opname = "EXIT"
+opcode = 0xfc
+end_bb = true
+in_auth = true
+offchain = true
+gas = 10
+format = ["a"]
+constructor = "exit"
+arg_types = ["string"]
+res_type = "none"
+documentation = "Abort execution (use upp all gas) with error message in Arg0."
+
+[[instruction]]
+opname = "NOP"
+opcode = 0xfd
+end_bb = false
+in_auth = true
+offchain = true
+gas = 1
+format = []
+constructor = "nop"
+arg_types = []
+res_type = "none"
+documentation = "The no op. does nothing."
+

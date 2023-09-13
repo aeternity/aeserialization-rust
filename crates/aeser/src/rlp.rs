@@ -196,9 +196,14 @@ fn bytes_to_size(mut bytes: Bytes) -> usize {
 }
 
 fn usize_to_min_be_bytes(n: usize) -> Bytes {
-    let byte_len = n.ilog(256) as usize + 1;
-    let bytes = n.to_be_bytes();
-    bytes[bytes.len() - byte_len..].to_vec()
+    // argument of integer logarithm must be positive so 0 is handled separately
+    if n == 0 {
+        vec![0]
+    } else {
+        let byte_len = n.ilog(256) as usize + 1;
+        let bytes = n.to_be_bytes();
+        bytes[bytes.len() - byte_len..].to_vec()
+    }
 }
 
 /// An RLP decoding error.
@@ -266,19 +271,37 @@ impl ToRlpItem for u32 {
     }
 }
 
+impl ToRlpItem for usize {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::ByteArray(usize_to_min_be_bytes(*self))
+    }
+}
+
 impl ToRlpItem for bool {
     fn to_rlp_item(&self) -> RlpItem {
         RlpItem::ByteArray(vec![*self as u8])
     }
 }
 
-impl<T: ToRlpItem> ToRlpItem for Vec<T> {
+impl ToRlpItem for Vec<u8> {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::ByteArray(self.to_vec())
+    }
+}
+
+impl ToRlpItem for [u8] {
+    fn to_rlp_item(&self) -> RlpItem {
+        RlpItem::ByteArray(self.to_vec())
+    }
+}
+
+impl ToRlpItem for Vec<RlpItem> {
     fn to_rlp_item(&self) -> RlpItem {
         RlpItem::List(self.iter().map(|x| x.to_rlp_item()).collect())
     }
 }
 
-impl<T: ToRlpItem> ToRlpItem for [T] {
+impl ToRlpItem for [RlpItem] {
     fn to_rlp_item(&self) -> RlpItem {
         RlpItem::List(self.iter().map(|x| x.to_rlp_item()).collect())
     }
@@ -336,11 +359,15 @@ impl FromRlpItem for bool {
     }
 }
 
-impl<T: FromRlpItem> FromRlpItem for Vec<T> {
+impl FromRlpItem for Vec<u8> {
     fn from_rlp_item(item: &RlpItem) -> Result<Self, error::DecodingErr> {
-        let rlps = item.list()?;
+        item.byte_array()
+    }
+}
 
-        rlps.into_iter().map(|x| T::from_rlp_item(&x)).collect()
+impl FromRlpItem for Vec<RlpItem> {
+    fn from_rlp_item(item: &RlpItem) -> Result<Self, error::DecodingErr> {
+        item.list()
     }
 }
 
