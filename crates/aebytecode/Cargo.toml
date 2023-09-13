@@ -14,7 +14,7 @@ toml = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 blake2 = "0.10"
 change-case = "0.2" # only needed for code gen
-aeserialization = { path = "../aeserialization" }
+aeser = { path = "../aeser" }
 
 [dev-dependencies]
 proptest = "1.0.0"
