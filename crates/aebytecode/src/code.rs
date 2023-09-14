@@ -390,7 +390,7 @@ pub enum Arg {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use aeser::rlp::ToRlpItem;
     use num_bigint::BigInt;

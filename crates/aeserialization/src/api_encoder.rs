@@ -340,7 +340,7 @@ pub fn decode_blockhash(data: &str) -> Result<Bytes, DecodingErr> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use proptest::prelude::*;
 

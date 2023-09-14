@@ -148,7 +148,7 @@ pub fn hash_source_code(str: &str) -> Bytes {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]

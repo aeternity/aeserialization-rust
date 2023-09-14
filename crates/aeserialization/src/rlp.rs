@@ -372,7 +372,7 @@ impl FromRlpItem for Vec<RlpItem> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use prop::collection::vec;
     use proptest::{collection::VecStrategy, prelude::*};

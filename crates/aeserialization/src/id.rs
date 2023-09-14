@@ -75,7 +75,7 @@ impl FromRlpItem for Id {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use proptest::prelude::*;
 

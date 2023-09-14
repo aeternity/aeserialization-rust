@@ -228,7 +228,7 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]

@@ -37,7 +37,7 @@ fn serialize_int(n: &BigInt) -> Bytes {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::{collections::BTreeMap, vec};
 
     use crate::data::types::BytesSize;

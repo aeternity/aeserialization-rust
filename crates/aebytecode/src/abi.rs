@@ -37,7 +37,7 @@ pub fn decode_calldata(fun_name: &String, calldata: Bytes) -> Result<Vec<Value>,
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use crate::data::value::Value;
     use proptest::prelude::*;
