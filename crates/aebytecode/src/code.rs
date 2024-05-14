@@ -335,12 +335,12 @@ pub struct Contract {
 #[derive(Debug, PartialEq)]
 pub struct Code {
     // TODO: no need to store as map? map is only needed for sorting?
-    functions: BTreeMap<Bytes, Function>,
+    pub functions: BTreeMap<Bytes, Function>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Symbols {
-    symbols: BTreeMap<Bytes, String>,
+    pub symbols: BTreeMap<Bytes, String>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -350,7 +350,7 @@ pub enum Annotation {
 
 #[derive(Debug, PartialEq)]
 pub struct Id {
-    id_str: String,
+    pub id_str: String,
 }
 
 impl Id {
@@ -377,8 +377,8 @@ pub enum Attributes {
 
 #[derive(Debug, PartialEq)]
 pub struct TypeSig {
-    args: Vec<Type>,
-    ret: Type,
+    pub args: Vec<Type>,
+    pub ret: Type,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
