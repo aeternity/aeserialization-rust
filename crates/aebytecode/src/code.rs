@@ -319,6 +319,7 @@ impl Serializable for Vec<Arg> {
 impl Serializable for AddressingMode {
     fn serialize(&self) -> Result<Bytes, SerErr> {
         match self {
+            Self::NoArgs => Ok(vec![]),
             Self::Short(low) => Ok(vec![*low]),
             Self::Long { high, low } => Ok(vec![*low, *high]),
         }
