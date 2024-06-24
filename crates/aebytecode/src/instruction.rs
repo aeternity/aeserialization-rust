@@ -1,6 +1,7 @@
 use crate::code::Arg;
 
 pub enum AddressingMode {
+    NoArgs,
     Short(u8),
     Long {
         low: u8,
@@ -595,37 +596,25 @@ impl Instruction {
 
     pub fn addressing_mode(&self) -> AddressingMode {
         let args = self.args();
-        let padded_args = match args.len() {
-            0 => args,
-            1..=4 => [[0].repeat(4 - args.len()).iter().map(|_| Arg::Stack(0)).collect(), args].concat(),
-            5..=8 => [[0].repeat(8 - args.len()).iter().map(|_| Arg::Stack(0)).collect(), args].concat(),
-            _ => panic!("Args length should be less than or equal to 8"),
-        };
-        if padded_args.len() == 4 {
-            let mut m1: u8 = 0;
-            for i in 0..4 {
-                m1 <<= 2;
-                m1 |= modifier_bits(&padded_args[i]);
+        let mut m: u16 = 0;
+        for i in 0..args.len() {
+            m |= modifier_bits(&args[i]) << (2 * i);
+        }
+        if args.len() == 0 {
+            AddressingMode::NoArgs
+        } else if args.len() <= 4 {
+            AddressingMode::Short(m as u8)
+        } else if args.len() <= 8 {
+            AddressingMode::Long {
+                low: (m & 0xFF) as u8,
+                high: (m >> 8) as u8,
             }
-            AddressingMode::Short(m1)
-        } else if padded_args.len() == 8 {
-            let mut m1: u8 = 0;
-            for i in 0..4 {
-                m1 <<= 2;
-                m1 |= modifier_bits(&padded_args[i]);
-            }
-            let mut m2: u8 = 0;
-            for i in 4..8 {
-                m2 <<= 2;
-                m2 |= modifier_bits(&padded_args[i]);
-            }
-            AddressingMode::Long { low: m1, high: m2 }
         } else {
-            panic!("Args were not padded correctly")
+            unreachable!("Too many args?")
         }
     }
 }
-fn modifier_bits(arg: &crate::code::Arg) -> u8 {
+fn modifier_bits(arg: &crate::code::Arg) -> u16 {
     match arg {
         Arg::Stack(_) => 0b00,
         Arg::Arg(_) => 0b01,
