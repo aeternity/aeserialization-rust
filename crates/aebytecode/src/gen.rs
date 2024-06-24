@@ -100,6 +100,7 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
     };
     let mut file = String::from("use crate::code::Arg;\n\n");
     file += "pub enum AddressingMode {\n";
+    file += "    NoArgs,\n";
     file += "    Short(u8),\n";
     file += "    Long {\n";
     file += "        low: u8,\n";
@@ -181,41 +182,33 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
     file += "    }\n";
 
     file += "\n";
-    file += "    pub fn addressing_mode(&self) -> AddressingMode {\n";
-    file += "        let args = self.args();\n";
-    file += "        let padded_args = match args.len() {\n";
-    file += "            0 => args,\n";
-    file += "            1..=4 => [[0].repeat(4 - args.len()).iter().map(|_| Arg::Stack(0)).collect(), args].concat(),\n";
-    file += "            5..=8 => [[0].repeat(8 - args.len()).iter().map(|_| Arg::Stack(0)).collect(), args].concat(),\n";
-    file += "            _ => panic!(\"Args length should be less than or equal to 8\"),\n";
-    file += "        };\n";
-    file += "        if padded_args.len() == 4 {\n";
-    file += "            let mut m1: u8 = 0;\n";
-    file += "            for i in 0..4 {\n";
-    file += "                m1 <<= 2;\n";
-    file += "                m1 |= modifier_bits(&padded_args[i]);\n";
-    file += "            }\n";
-    file += "            AddressingMode::Short(m1)\n";
-    file += "        } else if padded_args.len() == 8 {\n";
-    file += "            let mut m1: u8 = 0;\n";
-    file += "            for i in 0..4 {\n";
-    file += "                m1 <<= 2;\n";
-    file += "                m1 |= modifier_bits(&padded_args[i]);\n";
-    file += "            }\n";
-    file += "            let mut m2: u8 = 0;\n";
-    file += "            for i in 4..8 {\n";
-    file += "                m2 <<= 2;\n";
-    file += "                m2 |= modifier_bits(&padded_args[i]);\n";
-    file += "            }\n";
-    file += "            AddressingMode::Long { low: m1, high: m2 }\n";
-    file += "        } else {\n";
-    file += "            panic!(\"Args were not padded correctly\")\n";
-    file += "        }\n";
-    file += "    }\n";
+
+    file += r#"
+
+    pub fn addressing_mode(&self) -> AddressingMode {
+        let args = self.args();
+        let mut m: u16 = 0;
+        for i in 0..args.len() {
+            m |= modifier_bits(&args[i]) << (2 * i);
+        }
+        if args.len() == 0 {
+            AddressingMode::NoArgs
+        } else if args.len() <= 4 {
+            AddressingMode::Short(m as u8)
+        } else if args.len() <= 8 {
+            AddressingMode::Long {
+                low: (m & 0xFF) as u8,
+                high: (m >> 8) as u8,
+            }
+        } else {
+            unreachable!("Too many args?")
+        }
+    }
+"#;
 
     file += "}\n";
 
-    file += "fn modifier_bits(arg: &crate::code::Arg) -> u8 {\n";
+    file += "fn modifier_bits(arg: &crate::code::Arg) -> u16 {\n";
     file += "    match arg {\n";
     file += "        Arg::Stack(_) => 0b00,\n";
     file += "        Arg::Arg(_) => 0b01,\n";

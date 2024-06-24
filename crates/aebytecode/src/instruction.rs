@@ -594,6 +594,8 @@ impl Instruction {
         }
     }
 
+
+
     pub fn addressing_mode(&self) -> AddressingMode {
         let args = self.args();
         let mut m: u16 = 0;
