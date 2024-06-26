@@ -6,6 +6,7 @@ edition = "2021"
 
 [lib]
 name = "aeb"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 num-bigint = "0.4"
