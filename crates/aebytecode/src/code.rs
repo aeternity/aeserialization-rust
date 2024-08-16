@@ -326,7 +326,7 @@ impl Serializable for AddressingMode {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Contract {
     pub code: Vec<Function>,
     pub symbols: Symbols,
@@ -339,17 +339,17 @@ pub struct Code {
     pub functions: BTreeMap<Bytes, Function>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Symbols {
     pub symbols: BTreeMap<Bytes, String>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Annotation {
     Comment { line: u32, comment: String },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Id {
     pub id_str: String,
 }
@@ -360,7 +360,7 @@ impl Id {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Function {
     pub id: Id,
     pub attributes: Attributes,
@@ -376,7 +376,7 @@ pub enum Attributes {
     PrivatePayable = 3,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TypeSig {
     pub args: Vec<Type>,
     pub ret: Type,
