@@ -107,7 +107,7 @@ pub fn generate_instructions_enum() -> std::io::Result<()> {
     file += "        high: u8,\n";
     file += "    }\n";
     file += "}\n";
-    file += "#[derive(Debug, PartialEq, Eq)]\n";
+    file += "#[derive(Debug, Clone, PartialEq, Eq)]\n";
     file += "pub enum Instruction {\n";
     for i in &instructions.instruction {
         if i.format.is_empty() {
